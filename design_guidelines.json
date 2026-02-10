@@ -1,0 +1,135 @@
+{
+  "project_name": "The Kenya Challenge",
+  "design_philosophy": {
+    "theme": "The Warm Earth",
+    "core_concept": "Fuse the trustworthiness of a global charity with the energy of a fitness tracker. The aesthetic must feel 'sun-baked' and organic, not sterile and digital.",
+    "emotional_tone": "Inspiring, Connected, Vibrant, Transparent",
+    "theme_mode": "light",
+    "visual_anchors": [
+      "Warm Stone Backgrounds (No clinical white)",
+      "Vibrant Maasai-inspired Accents (Orange, Emerald)",
+      "Topographic/Organic Textures",
+      "Serif Headings for Trust"
+    ]
+  },
+  "typography": {
+    "font_family_heading": "Libre Baskerville, serif",
+    "font_family_body": "DM Sans, sans-serif",
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;500;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap",
+    "usage_rules": {
+      "headings": "text-stone-900 font-bold tracking-tight",
+      "subheadings": "text-stone-600 font-medium tracking-wide uppercase text-xs",
+      "body": "text-stone-700 leading-relaxed",
+      "accent": "text-orange-700 font-medium"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#fafaf9", 
+      "foreground": "#1c1917", 
+      "card": "#ffffff",
+      "card_foreground": "#1c1917",
+      "popover": "#ffffff",
+      "popover_foreground": "#1c1917",
+      "primary": "#ea580c", 
+      "primary_foreground": "#ffffff",
+      "secondary": "#059669", 
+      "secondary_foreground": "#ffffff",
+      "muted": "#f5f5f4", 
+      "muted_foreground": "#78716c",
+      "accent": "#ffedd5", 
+      "accent_foreground": "#9a3412",
+      "destructive": "#ef4444",
+      "destructive_foreground": "#ffffff",
+      "border": "#e7e5e4", 
+      "input": "#e7e5e4",
+      "ring": "#ea580c" 
+    },
+    "tailwind_config_extension": {
+      "colors": {
+        "stone": {
+          "50": "#fafaf9",
+          "100": "#f5f5f4",
+          "200": "#e7e5e4",
+          "900": "#1c1917"
+        },
+        "kef": {
+          "orange": "#ea580c",
+          "green": "#059669",
+          "sky": "#0ea5e9"
+        }
+      }
+    }
+  },
+  "visual_enhancers": {
+    "radius": "0.75rem",
+    "shadows": {
+      "card": "0 4px 20px -2px rgba(87, 83, 78, 0.1)",
+      "hover": "0 10px 25px -5px rgba(234, 88, 12, 0.15)"
+    },
+    "textures": [
+      "Use subtle noise or grain on the body background (opacity 0.02)",
+      "Use topographic map lines as faint background patterns in hero sections"
+    ]
+  },
+  "components": {
+    "buttons": {
+      "primary": "rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 font-medium px-8 py-6 h-auto transition-all hover:scale-[1.02]",
+      "secondary": "rounded-full bg-stone-100 hover:bg-stone-200 text-stone-900 font-medium px-6 py-6 h-auto",
+      "outline": "rounded-full border-2 border-stone-200 hover:border-orange-600 hover:text-orange-600 bg-transparent"
+    },
+    "cards": {
+      "style": "bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300",
+      "padding": "p-6 md:p-8"
+    },
+    "inputs": {
+      "style": "rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all h-12"
+    }
+  },
+  "layout_strategies": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "section_spacing": "py-16 md:py-24",
+    "grid_bento": "grid grid-cols-1 md:grid-cols-12 gap-6",
+    "mobile_first": "Always stack columns on mobile (grid-cols-1), expand to md:grid-cols-2 or lg:grid-cols-3"
+  },
+  "image_urls": {
+    "hero_background": "https://images.unsplash.com/photo-1738507967372-67c692309a07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85",
+    "route_map_placeholder": "https://images.unsplash.com/photo-1759767119566-e7dad33d540b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85",
+    "students_impact": [
+      "https://images.unsplash.com/photo-1729691032175-d6edd1581a31?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwc3R1ZGVudHMlMjBzbWlsaW5nJTIwc2Nob29sJTIwdW5pZm9ybSUyMGtlbnlhfGVufDB8fHx8MTc3MDc0NzM1MHww&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1729691031598-a97244ce0503?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwyfHxhZnJpY2FuJTIwc3R1ZGVudHMlMjBzbWlsaW5nJTIwc2Nob29sJTIwdW5pZm9ybSUyMGtlbnlhfGVufDB8fHx8MTc3MDc0NzM1MHww&ixlib=rb-4.1.0&q=85"
+    ],
+    "walkers_community": [
+      "https://images.unsplash.com/photo-1770563181834-84edf4cedb07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHw0fHxkaXZlcnNlJTIwZ3JvdXAlMjBwZW9wbGUlMjB3YWxraW5nJTIwaGlraW5nJTIwbmF0dXJlJTIwaGFwcHl8ZW58MHx8fHwxNzcwNzQ3MzUxfDA&ixlib=rb-4.1.0&q=85",
+      "https://images.unsplash.com/photo-1632089401802-57a6747b3dd1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxkaXZlcnNlJTIwZ3JvdXAlMjBwZW9wbGUlMjB3YWxraW5nJTIwaGlraW5nJTIwbmF0dXJlJTIwaGFwcHl8ZW58MHx8fHwxNzcwNzQ3MzUxfDA&ixlib=rb-4.1.0&q=85"
+    ]
+  },
+  "icons": {
+    "library": "lucide-react",
+    "styles": "stroke-1.5 w-5 h-5"
+  },
+  "instructions_to_main_agent": [
+    "1. THEME SETUP: Update tailwind.config.js with the 'stone' and 'kef' color palettes immediately.",
+    "2. FONT: Add the Google Fonts link to public/index.html and update index.css body font-family.",
+    "3. SHADOWS: Use the custom shadow values for cards. Do not use default shadows.",
+    "4. IMAGERY: Use 'students_impact' images for the 'Why KEF?' section and 'walkers_community' for the 'Join the Challenge' section.",
+    "5. MAP: For the Route Progress page, use the 'route_map_placeholder' as the background image and overlay a CSS SVG path with a progress marker.",
+    "6. CHARTS: Use 'recharts' with the custom 'kef' color palette (Orange for user, Stone for average).",
+    "7. TESTIDS: Every button, input, and link MUST have a data-testid attribute (e.g., data-testid='login-btn').",
+    "8. RESPONSIVE: Mobile navigation must be a Sidebar/Drawer, not a hamburger menu that pushes content down.",
+    "9. NO GENERIC TITLES: Do not use 'Dashboard' as a title. Use 'Habari, [Name]' (Hello in Swahili) or 'Your Journey'."
+  ],
+  "universal_guidelines": {
+    "do_not": [
+      "DO NOT use generic pure blue (#3b82f6) for primary actions.",
+      "DO NOT make corners sharp (rounded-none).",
+      "DO NOT use 'Inter' font.",
+      "DO NOT use text-black (#000000). Use text-stone-900."
+    ],
+    "must_do": [
+      "MUST use adequate whitespace (py-16+ for sections).",
+      "MUST use subtle entrance animations for cards (fade-in-up).",
+      "MUST show currency in KEF context (e.g., '$50 provides 1 month of education')."
+    ]
+  }
+}
