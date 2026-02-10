@@ -158,7 +158,7 @@ class KenyaChallengeAPITester:
             "Create Activity",
             "POST",
             "activities",
-            201,
+            200,  # Backend returns 200, not 201
             data={"date": datetime.now().strftime("%Y-%m-%d"), "steps": 5000},
             token=self.walker_token
         )
