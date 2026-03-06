@@ -25,7 +25,14 @@ export default function LoginPage() {
       await login(res.data.token);
       toast.success('Welcome back!');
       const role = res.data.user?.role;
-      navigate(role === 'admin' ? '/admin' : '/dashboard');
+      const hasChallenge = res.data.user?.challenge_id && res.data.user?.paid;
+      if (role === 'admin') {
+        navigate('/admin');
+      } else if (!hasChallenge) {
+        navigate('/onboarding');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Login failed');
     } finally {

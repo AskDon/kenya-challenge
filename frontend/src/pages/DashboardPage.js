@@ -56,11 +56,11 @@ export default function DashboardPage() {
             <Mountain className="w-12 h-12 text-orange-300 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-stone-900 mb-2">Pick Your Challenge</h2>
             <p className="text-stone-500 mb-6 max-w-md mx-auto">
-              Choose a virtual Kenyan route and a pricing level to begin your walking journey.
+              Choose a virtual Kenyan route and walker type to begin your walking journey.
             </p>
-            <Link to="/challenges">
+            <Link to="/onboarding">
               <Button className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium px-8 py-6 h-auto" data-testid="dashboard-pick-challenge-btn">
-                Browse Challenges <ArrowRight className="w-4 h-4 ml-2" />
+                Get Started <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             </Link>
           </CardContent>
