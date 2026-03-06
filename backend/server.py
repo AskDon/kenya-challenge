@@ -72,23 +72,31 @@ class ChallengeUpdate(BaseModel):
     image_url: Optional[str] = None
     active: Optional[bool] = None
 
-class PricingLevelCreate(BaseModel):
+class WalkerTypeCreate(BaseModel):
     name: str
-    price_usd: float
-    description: str
-    swag: str
-    order: int = 0
+    cost_usd: float
+    display_order: int = 0
 
-class PricingLevelUpdate(BaseModel):
+class WalkerTypeUpdate(BaseModel):
     name: Optional[str] = None
-    price_usd: Optional[float] = None
-    description: Optional[str] = None
+    cost_usd: Optional[float] = None
+    display_order: Optional[int] = None
+
+class AchievementLevelCreate(BaseModel):
+    total_amount_usd: float
+    achievement: str
+    swag: str
+    display_order: int = 0
+
+class AchievementLevelUpdate(BaseModel):
+    total_amount_usd: Optional[float] = None
+    achievement: Optional[str] = None
     swag: Optional[str] = None
-    order: Optional[int] = None
+    display_order: Optional[int] = None
 
 class SelectChallengeRequest(BaseModel):
     challenge_id: str
-    pricing_level_id: str
+    walker_type_id: str
 
 class ActivityCreate(BaseModel):
     date: str
@@ -178,7 +186,7 @@ async def signup(req: SignupRequest):
         "country": req.country or "US",
         "role": "walker",
         "challenge_id": None,
-        "pricing_level_id": None,
+        "walker_type_id": None,
         "paid": False,
         "team_id": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -267,41 +275,79 @@ async def delete_challenge(challenge_id: str, user=Depends(get_admin_user)):
 
 
 # ==========================================
-# Pricing Level Routes
+# Walker Type Routes
 # ==========================================
 
-@api_router.get("/pricing-levels")
-async def list_pricing_levels():
-    levels = await db.pricing_levels.find({}, {"_id": 0}).sort("order", 1).to_list(100)
-    return levels
+@api_router.get("/walker-types")
+async def list_walker_types():
+    types = await db.walker_types.find({}, {"_id": 0}).sort("display_order", 1).to_list(100)
+    return types
 
-@api_router.post("/pricing-levels")
-async def create_pricing_level(req: PricingLevelCreate, user=Depends(get_admin_user)):
-    level = {
+@api_router.post("/walker-types")
+async def create_walker_type(req: WalkerTypeCreate, user=Depends(get_admin_user)):
+    wt = {
         "id": str(uuid.uuid4()),
         **req.model_dump(),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    await db.pricing_levels.insert_one(level)
-    resp = {k: v for k, v in level.items() if k != "_id"}
+    await db.walker_types.insert_one(wt)
+    resp = {k: v for k, v in wt.items() if k != "_id"}
     return resp
 
-@api_router.put("/pricing-levels/{level_id}")
-async def update_pricing_level(level_id: str, req: PricingLevelUpdate, user=Depends(get_admin_user)):
+@api_router.put("/walker-types/{type_id}")
+async def update_walker_type(type_id: str, req: WalkerTypeUpdate, user=Depends(get_admin_user)):
     updates = {k: v for k, v in req.model_dump().items() if v is not None}
     if updates:
-        await db.pricing_levels.update_one({"id": level_id}, {"$set": updates})
-    updated = await db.pricing_levels.find_one({"id": level_id}, {"_id": 0})
+        await db.walker_types.update_one({"id": type_id}, {"$set": updates})
+    updated = await db.walker_types.find_one({"id": type_id}, {"_id": 0})
     if not updated:
-        raise HTTPException(status_code=404, detail="Pricing level not found")
+        raise HTTPException(status_code=404, detail="Walker type not found")
     return updated
 
-@api_router.delete("/pricing-levels/{level_id}")
-async def delete_pricing_level(level_id: str, user=Depends(get_admin_user)):
-    result = await db.pricing_levels.delete_one({"id": level_id})
+@api_router.delete("/walker-types/{type_id}")
+async def delete_walker_type(type_id: str, user=Depends(get_admin_user)):
+    result = await db.walker_types.delete_one({"id": type_id})
     if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Pricing level not found")
-    return {"message": "Pricing level deleted"}
+        raise HTTPException(status_code=404, detail="Walker type not found")
+    return {"message": "Walker type deleted"}
+
+
+# ==========================================
+# Achievement Level Routes
+# ==========================================
+
+@api_router.get("/achievement-levels")
+async def list_achievement_levels():
+    levels = await db.achievement_levels.find({}, {"_id": 0}).sort("display_order", 1).to_list(100)
+    return levels
+
+@api_router.post("/achievement-levels")
+async def create_achievement_level(req: AchievementLevelCreate, user=Depends(get_admin_user)):
+    al = {
+        "id": str(uuid.uuid4()),
+        **req.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.achievement_levels.insert_one(al)
+    resp = {k: v for k, v in al.items() if k != "_id"}
+    return resp
+
+@api_router.put("/achievement-levels/{level_id}")
+async def update_achievement_level(level_id: str, req: AchievementLevelUpdate, user=Depends(get_admin_user)):
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    if updates:
+        await db.achievement_levels.update_one({"id": level_id}, {"$set": updates})
+    updated = await db.achievement_levels.find_one({"id": level_id}, {"_id": 0})
+    if not updated:
+        raise HTTPException(status_code=404, detail="Achievement level not found")
+    return updated
+
+@api_router.delete("/achievement-levels/{level_id}")
+async def delete_achievement_level(level_id: str, user=Depends(get_admin_user)):
+    result = await db.achievement_levels.delete_one({"id": level_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Achievement level not found")
+    return {"message": "Achievement level deleted"}
 
 
 # ==========================================
@@ -313,12 +359,12 @@ async def select_challenge(req: SelectChallengeRequest, user=Depends(get_current
     challenge = await db.challenges.find_one({"id": req.challenge_id}, {"_id": 0})
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
-    level = await db.pricing_levels.find_one({"id": req.pricing_level_id}, {"_id": 0})
-    if not level:
-        raise HTTPException(status_code=404, detail="Pricing level not found")
+    wt = await db.walker_types.find_one({"id": req.walker_type_id}, {"_id": 0})
+    if not wt:
+        raise HTTPException(status_code=404, detail="Walker type not found")
     await db.users.update_one(
         {"id": user["id"]},
-        {"$set": {"challenge_id": req.challenge_id, "pricing_level_id": req.pricing_level_id}}
+        {"$set": {"challenge_id": req.challenge_id, "walker_type_id": req.walker_type_id}}
     )
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
     return updated
@@ -482,28 +528,57 @@ async def get_fundraising_page(walker_id: str):
     challenge = None
     if walker.get("challenge_id"):
         challenge = await db.challenges.find_one({"id": walker["challenge_id"]}, {"_id": 0})
-    pricing_level = None
-    if walker.get("pricing_level_id"):
-        pricing_level = await db.pricing_levels.find_one({"id": walker["pricing_level_id"]}, {"_id": 0})
+    walker_type = None
+    walker_fee = 0
+    if walker.get("walker_type_id"):
+        walker_type = await db.walker_types.find_one({"id": walker["walker_type_id"]}, {"_id": 0})
+        if walker_type and walker.get("paid"):
+            walker_fee = walker_type.get("cost_usd", 0)
     activities = await db.activities.find({"user_id": walker_id}, {"_id": 0}).to_list(10000)
     total_km = round(sum(a.get("km", 0) for a in activities), 2)
     total_steps = sum(a.get("steps", 0) for a in activities)
     sponsors = await db.sponsors.find(
         {"walker_id": walker_id}, {"_id": 0}
     ).sort("created_at", -1).to_list(1000)
-    total_raised = round(sum(s.get("amount", 0) for s in sponsors), 2)
+    supporter_pledges = round(sum(s.get("amount", 0) for s in sponsors), 2)
+    # Total raised = walker fee + teammate fees + supporter pledges
+    teammate_fees = 0
     team = None
     if walker.get("team_id"):
         team = await db.teams.find_one({"id": walker["team_id"]}, {"_id": 0})
+        if team and team.get("creator_id") == walker_id:
+            teammates = await db.users.find(
+                {"team_id": team["id"], "id": {"$ne": walker_id}}, {"_id": 0}
+            ).to_list(100)
+            for tm in teammates:
+                if tm.get("paid") and tm.get("walker_type_id"):
+                    tm_type = await db.walker_types.find_one({"id": tm["walker_type_id"]}, {"_id": 0})
+                    if tm_type:
+                        teammate_fees += tm_type.get("cost_usd", 0)
+    total_raised = round(walker_fee + teammate_fees + supporter_pledges, 2)
+    # Compute achievement level
+    achievement_levels = await db.achievement_levels.find({}, {"_id": 0}).sort("total_amount_usd", 1).to_list(100)
+    current_achievement = None
+    next_achievement = None
+    for al in achievement_levels:
+        if total_raised >= al["total_amount_usd"]:
+            current_achievement = al
+        elif not next_achievement:
+            next_achievement = al
     return {
         "walker": walker,
         "challenge": challenge,
-        "pricing_level": pricing_level,
+        "walker_type": walker_type,
         "total_km": total_km,
         "total_steps": total_steps,
         "total_raised": total_raised,
+        "walker_fee": walker_fee,
+        "supporter_pledges": supporter_pledges,
+        "teammate_fees": teammate_fees,
         "sponsors": sponsors,
         "team": team,
+        "current_achievement": current_achievement,
+        "next_achievement": next_achievement,
     }
 
 
@@ -678,16 +753,42 @@ async def get_user_progress(user=Depends(get_current_user)):
     if user.get("challenge_id"):
         challenge = await db.challenges.find_one({"id": user["challenge_id"]}, {"_id": 0})
 
-    pricing_level = None
-    if user.get("pricing_level_id"):
-        pricing_level = await db.pricing_levels.find_one({"id": user["pricing_level_id"]}, {"_id": 0})
+    walker_type = None
+    walker_fee = 0
+    if user.get("walker_type_id"):
+        walker_type = await db.walker_types.find_one({"id": user["walker_type_id"]}, {"_id": 0})
+        if walker_type and user.get("paid"):
+            walker_fee = walker_type.get("cost_usd", 0)
 
     sponsors = await db.sponsors.find({"walker_id": user["id"]}, {"_id": 0}).to_list(10000)
-    total_raised = round(sum(s.get("amount", 0) for s in sponsors), 2)
+    supporter_pledges = round(sum(s.get("amount", 0) for s in sponsors), 2)
 
+    # Calculate teammate fees if team leader
+    teammate_fees = 0
     team = None
     if user.get("team_id"):
         team = await db.teams.find_one({"id": user["team_id"]}, {"_id": 0})
+        if team and team.get("creator_id") == user["id"]:
+            teammates = await db.users.find(
+                {"team_id": team["id"], "id": {"$ne": user["id"]}}, {"_id": 0}
+            ).to_list(100)
+            for tm in teammates:
+                if tm.get("paid") and tm.get("walker_type_id"):
+                    tm_type = await db.walker_types.find_one({"id": tm["walker_type_id"]}, {"_id": 0})
+                    if tm_type:
+                        teammate_fees += tm_type.get("cost_usd", 0)
+
+    total_raised = round(walker_fee + teammate_fees + supporter_pledges, 2)
+
+    # Compute achievement level
+    achievement_levels = await db.achievement_levels.find({}, {"_id": 0}).sort("total_amount_usd", 1).to_list(100)
+    current_achievement = None
+    next_achievement = None
+    for al in achievement_levels:
+        if total_raised >= al["total_amount_usd"]:
+            current_achievement = al
+        elif not next_achievement:
+            next_achievement = al
 
     progress_pct = 0
     if challenge and challenge.get("total_distance_km", 0) > 0:
@@ -707,8 +808,13 @@ async def get_user_progress(user=Depends(get_current_user)):
         "total_km": total_km,
         "total_steps": total_steps,
         "total_raised": total_raised,
+        "walker_fee": walker_fee,
+        "supporter_pledges": supporter_pledges,
+        "teammate_fees": teammate_fees,
         "challenge": challenge,
-        "pricing_level": pricing_level,
+        "walker_type": walker_type,
+        "current_achievement": current_achievement,
+        "next_achievement": next_achievement,
         "progress_pct": progress_pct,
         "current_milestone": current_milestone,
         "next_milestone": next_milestone,
@@ -739,15 +845,24 @@ async def seed_data():
     })
 
     pricing_levels = [
-        {"id": "pl-jambo", "name": "JAMBO", "price_usd": 25, "description": "Shoes", "swag": "25th-anniversary item", "order": 1},
-        {"id": "pl-builder", "name": "BUILDER", "price_usd": 97, "description": "Uniform", "swag": "T-shirt", "order": 2},
-        {"id": "pl-leader", "name": "LEADER", "price_usd": 250, "description": "TBD", "swag": "Hoodie", "order": 3},
-        {"id": "pl-savior", "name": "SAVIOR", "price_usd": 2500, "description": "2 kids for 1 year", "swag": "Gift bag", "order": 4},
-        {"id": "pl-gotokenya", "name": "GO TO KENYA", "price_usd": 25000, "description": "5 kids x 4 years", "swag": "2 tickets to Kenya", "order": 5},
+        {"id": "wt-basic", "name": "Basic", "cost_usd": 25, "display_order": 1},
+        {"id": "wt-builder", "name": "Builder", "cost_usd": 97, "display_order": 2},
+        {"id": "wt-leader", "name": "Leader", "cost_usd": 250, "display_order": 3},
     ]
     for pl in pricing_levels:
         pl["created_at"] = datetime.now(timezone.utc).isoformat()
-    await db.pricing_levels.insert_many(pricing_levels)
+    await db.walker_types.insert_many(pricing_levels)
+
+    achievement_levels = [
+        {"id": "al-shoes", "total_amount_usd": 25, "achievement": "Shoes for one child", "swag": "Kenya Challenge Certificate", "display_order": 1},
+        {"id": "al-uniform", "total_amount_usd": 97, "achievement": "Uniforms for one child", "swag": "Kenya Challenge T-shirt", "display_order": 2},
+        {"id": "al-training", "total_amount_usd": 250, "achievement": "Life Skills Training", "swag": "Kenya Challenge Hoodie", "display_order": 3},
+        {"id": "al-sponsor2", "total_amount_usd": 2500, "achievement": "Sponsor 2 children for an entire year", "swag": "Kenya Challenge Custom Tote Bag With Goodies", "display_order": 4},
+        {"id": "al-sponsor5", "total_amount_usd": 25000, "achievement": "Sponsor 5 children for the full 4 years", "swag": "2 Tickets to Kenya", "display_order": 5},
+    ]
+    for al in achievement_levels:
+        al["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.achievement_levels.insert_many(achievement_levels)
 
     challenges = [
         {
@@ -810,7 +925,7 @@ async def seed_data():
         "country": "US",
         "role": "admin",
         "challenge_id": None,
-        "pricing_level_id": None,
+        "walker_type_id": None,
         "paid": False,
         "team_id": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -824,7 +939,7 @@ async def seed_data():
         "country": "US",
         "role": "walker",
         "challenge_id": "ch-naivasha",
-        "pricing_level_id": "pl-builder",
+        "walker_type_id": "wt-builder",
         "paid": True,
         "team_id": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -838,7 +953,7 @@ async def seed_data():
         "country": "KE",
         "role": "walker",
         "challenge_id": "ch-migration",
-        "pricing_level_id": "pl-leader",
+        "walker_type_id": "wt-leader",
         "paid": True,
         "team_id": None,
         "created_at": datetime.now(timezone.utc).isoformat(),

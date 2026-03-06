@@ -9,12 +9,13 @@ import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2 } from 'lucide-react';
+import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints } from 'lucide-react';
 
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
   const [challenges, setChallenges] = useState([]);
-  const [levels, setLevels] = useState([]);
+  const [walkerTypes, setWalkerTypes] = useState([]);
+  const [achievementLevels, setAchievementLevels] = useState([]);
   const [users, setUsers] = useState([]);
   const [corpSponsors, setCorpSponsors] = useState([]);
   const [config, setConfig] = useState({});
@@ -24,14 +25,16 @@ export default function AdminPage() {
     Promise.all([
       api.get('/admin/stats'),
       api.get('/challenges'),
-      api.get('/pricing-levels'),
+      api.get('/walker-types'),
+      api.get('/achievement-levels'),
       api.get('/admin/users'),
       api.get('/admin/config'),
       api.get('/corporate-sponsors').catch(() => ({ data: [] })),
-    ]).then(([s, c, l, u, cfg, cs]) => {
+    ]).then(([s, c, wt, al, u, cfg, cs]) => {
       setStats(s.data);
       setChallenges(c.data);
-      setLevels(l.data);
+      setWalkerTypes(wt.data);
+      setAchievementLevels(al.data);
       setUsers(u.data);
       setConfig(cfg.data);
       setCorpSponsors(cs.data);
@@ -55,7 +58,8 @@ export default function AdminPage() {
         <TabsList className="flex flex-wrap bg-stone-100 rounded-xl p-1 mb-6 gap-1">
           <TabsTrigger value="stats" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-stats"><BarChart3 className="w-3 h-3 mr-1" /> Stats</TabsTrigger>
           <TabsTrigger value="challenges" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-challenges"><Mountain className="w-3 h-3 mr-1" /> Challenges</TabsTrigger>
-          <TabsTrigger value="pricing" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-pricing"><DollarSign className="w-3 h-3 mr-1" /> Pricing</TabsTrigger>
+          <TabsTrigger value="walker-types" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-walker-types"><Footprints className="w-3 h-3 mr-1" /> Walker Types</TabsTrigger>
+          <TabsTrigger value="achievements" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-achievements"><Award className="w-3 h-3 mr-1" /> Achievements</TabsTrigger>
           <TabsTrigger value="users" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-users"><Users className="w-3 h-3 mr-1" /> Users</TabsTrigger>
           <TabsTrigger value="corporate" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-corporate"><Building2 className="w-3 h-3 mr-1" /> Corporate</TabsTrigger>
           <TabsTrigger value="config" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-config"><Settings className="w-3 h-3 mr-1" /> Config</TabsTrigger>
@@ -68,7 +72,7 @@ export default function AdminPage() {
               { label: 'Total Walkers', value: stats?.total_users, icon: Users },
               { label: 'Total Teams', value: stats?.total_teams, icon: Users },
               { label: 'Total Distance', value: `${stats?.total_distance_km} km`, icon: Mountain },
-              { label: 'Total Steps', value: stats?.total_steps?.toLocaleString(), icon: Mountain },
+              { label: 'Total Steps', value: stats?.total_steps?.toLocaleString(), icon: Footprints },
               { label: 'Total Pledged', value: `$${stats?.total_pledged}`, icon: DollarSign },
               { label: 'Corporate Sponsors', value: stats?.total_corporate_sponsors, icon: Building2 },
             ].map(s => (
@@ -88,9 +92,14 @@ export default function AdminPage() {
           <ChallengesAdmin challenges={challenges} onRefresh={loadAll} />
         </TabsContent>
 
-        {/* Pricing */}
-        <TabsContent value="pricing">
-          <PricingAdmin levels={levels} onRefresh={loadAll} />
+        {/* Walker Types */}
+        <TabsContent value="walker-types">
+          <WalkerTypesAdmin walkerTypes={walkerTypes} onRefresh={loadAll} />
+        </TabsContent>
+
+        {/* Achievement Levels */}
+        <TabsContent value="achievements">
+          <AchievementLevelsAdmin levels={achievementLevels} onRefresh={loadAll} />
         </TabsContent>
 
         {/* Users */}
@@ -204,9 +213,7 @@ function ChallengesAdmin({ challenges, onRefresh }) {
       await api.delete(`/challenges/${id}`);
       toast.success('Challenge deleted');
       onRefresh();
-    } catch {
-      toast.error('Failed to delete');
-    }
+    } catch { toast.error('Failed to delete'); }
   };
 
   return (
@@ -256,12 +263,8 @@ function ChallengesAdmin({ challenges, onRefresh }) {
                 <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones</p>
               </div>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(ch)} className="rounded-full" data-testid={`admin-edit-challenge-${ch.id}`}>
-                  <Pencil className="w-4 h-4 text-stone-400" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)} className="rounded-full" data-testid={`admin-delete-challenge-${ch.id}`}>
-                  <Trash2 className="w-4 h-4 text-red-400" />
-                </Button>
+                <Button variant="ghost" size="icon" onClick={() => openEdit(ch)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
               </div>
             </div>
           ))}
@@ -271,27 +274,26 @@ function ChallengesAdmin({ challenges, onRefresh }) {
   );
 }
 
-function PricingAdmin({ levels, onRefresh }) {
-  const [form, setForm] = useState({ name: '', price_usd: '', description: '', swag: '', order: '' });
+function WalkerTypesAdmin({ walkerTypes, onRefresh }) {
+  const [form, setForm] = useState({ name: '', cost_usd: '', display_order: '' });
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
 
-  const openCreate = () => { setForm({ name: '', price_usd: '', description: '', swag: '', order: '' }); setEditing(null); setOpen(true); };
-  const openEdit = (l) => { setForm({ name: l.name, price_usd: String(l.price_usd), description: l.description, swag: l.swag, order: String(l.order) }); setEditing(l.id); setOpen(true); };
+  const openCreate = () => { setForm({ name: '', cost_usd: '', display_order: '' }); setEditing(null); setOpen(true); };
+  const openEdit = (wt) => { setForm({ name: wt.name, cost_usd: String(wt.cost_usd), display_order: String(wt.display_order) }); setEditing(wt.id); setOpen(true); };
 
   const handleSave = async () => {
-    const payload = { name: form.name, price_usd: parseFloat(form.price_usd), description: form.description, swag: form.swag, order: parseInt(form.order) || 0 };
+    const payload = { name: form.name, cost_usd: parseFloat(form.cost_usd), display_order: parseInt(form.display_order) || 0 };
     try {
-      if (editing) { await api.put(`/pricing-levels/${editing}`, payload); toast.success('Updated'); }
-      else { await api.post('/pricing-levels', payload); toast.success('Created'); }
-      setOpen(false);
-      onRefresh();
+      if (editing) { await api.put(`/walker-types/${editing}`, payload); toast.success('Updated'); }
+      else { await api.post('/walker-types', payload); toast.success('Created'); }
+      setOpen(false); onRefresh();
     } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete?')) return;
-    try { await api.delete(`/pricing-levels/${id}`); toast.success('Deleted'); onRefresh(); }
+    try { await api.delete(`/walker-types/${id}`); toast.success('Deleted'); onRefresh(); }
     catch { toast.error('Failed'); }
   };
 
@@ -299,36 +301,105 @@ function PricingAdmin({ levels, onRefresh }) {
     <Card className="bg-white rounded-2xl border border-stone-100">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-stone-900">Pricing Levels ({levels.length})</h3>
+          <div>
+            <h3 className="text-lg font-bold text-stone-900">Walker Types ({walkerTypes.length})</h3>
+            <p className="text-xs text-stone-400 mt-0.5">Registration fee levels for walkers</p>
+          </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button onClick={openCreate} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-add-level-btn">
+              <Button onClick={openCreate} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-add-walker-type-btn">
                 <Plus className="w-4 h-4 mr-1" /> Add
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? 'Edit Level' : 'New Level'}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editing ? 'Edit Walker Type' : 'New Walker Type'}</DialogTitle></DialogHeader>
               <div className="space-y-3">
-                <div><Label className="text-sm">Name</Label><Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-level-name" /></div>
-                <div><Label className="text-sm">Price (USD)</Label><Input type="number" value={form.price_usd} onChange={e => setForm(f => ({...f, price_usd: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-level-price" /></div>
-                <div><Label className="text-sm">Description</Label><Input value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-level-desc" /></div>
-                <div><Label className="text-sm">SWAG</Label><Input value={form.swag} onChange={e => setForm(f => ({...f, swag: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-level-swag" /></div>
-                <div><Label className="text-sm">Order</Label><Input type="number" value={form.order} onChange={e => setForm(f => ({...f, order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-level-order" /></div>
-                <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-level-save-btn">{editing ? 'Update' : 'Create'}</Button>
+                <div><Label className="text-sm">Name</Label><Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-name" /></div>
+                <div><Label className="text-sm">Cost (USD)</Label><Input type="number" value={form.cost_usd} onChange={e => setForm(f => ({...f, cost_usd: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-cost" /></div>
+                <div><Label className="text-sm">Display Order</Label><Input type="number" value={form.display_order} onChange={e => setForm(f => ({...f, display_order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-order" /></div>
+                <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-wt-save-btn">{editing ? 'Update' : 'Create'}</Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
         <div className="space-y-2">
-          {levels.map(l => (
-            <div key={l.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-level-${l.id}`}>
+          {walkerTypes.map(wt => (
+            <div key={wt.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-wt-${wt.id}`}>
               <div>
-                <p className="text-sm font-medium text-stone-900">{l.name} - ${l.price_usd.toLocaleString()}</p>
-                <p className="text-xs text-stone-400">{l.description} &middot; SWAG: {l.swag}</p>
+                <p className="text-sm font-medium text-stone-900">{wt.name} - ${wt.cost_usd}</p>
+                <p className="text-xs text-stone-400">Order: {wt.display_order}</p>
               </div>
               <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(l)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(l.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => openEdit(wt)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(wt.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function AchievementLevelsAdmin({ levels, onRefresh }) {
+  const [form, setForm] = useState({ total_amount_usd: '', achievement: '', swag: '', display_order: '' });
+  const [editing, setEditing] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  const openCreate = () => { setForm({ total_amount_usd: '', achievement: '', swag: '', display_order: '' }); setEditing(null); setOpen(true); };
+  const openEdit = (al) => { setForm({ total_amount_usd: String(al.total_amount_usd), achievement: al.achievement, swag: al.swag, display_order: String(al.display_order) }); setEditing(al.id); setOpen(true); };
+
+  const handleSave = async () => {
+    const payload = { total_amount_usd: parseFloat(form.total_amount_usd), achievement: form.achievement, swag: form.swag, display_order: parseInt(form.display_order) || 0 };
+    try {
+      if (editing) { await api.put(`/achievement-levels/${editing}`, payload); toast.success('Updated'); }
+      else { await api.post('/achievement-levels', payload); toast.success('Created'); }
+      setOpen(false); onRefresh();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete?')) return;
+    try { await api.delete(`/achievement-levels/${id}`); toast.success('Deleted'); onRefresh(); }
+    catch { toast.error('Failed'); }
+  };
+
+  return (
+    <Card className="bg-white rounded-2xl border border-stone-100">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-stone-900">Achievement Levels ({levels.length})</h3>
+            <p className="text-xs text-stone-400 mt-0.5">Based on total amount raised (walker fee + teammates + supporters)</p>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={openCreate} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-add-achievement-btn">
+                <Plus className="w-4 h-4 mr-1" /> Add
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>{editing ? 'Edit Achievement Level' : 'New Achievement Level'}</DialogTitle></DialogHeader>
+              <div className="space-y-3">
+                <div><Label className="text-sm">Total Amount (USD)</Label><Input type="number" value={form.total_amount_usd} onChange={e => setForm(f => ({...f, total_amount_usd: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-amount" /></div>
+                <div><Label className="text-sm">Achievement</Label><Input value={form.achievement} onChange={e => setForm(f => ({...f, achievement: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-achievement" /></div>
+                <div><Label className="text-sm">Thank You Swag</Label><Input value={form.swag} onChange={e => setForm(f => ({...f, swag: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-swag" /></div>
+                <div><Label className="text-sm">Display Order</Label><Input type="number" value={form.display_order} onChange={e => setForm(f => ({...f, display_order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-order" /></div>
+                <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-al-save-btn">{editing ? 'Update' : 'Create'}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="space-y-2">
+          {levels.map(al => (
+            <div key={al.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-al-${al.id}`}>
+              <div>
+                <p className="text-sm font-medium text-stone-900">${al.total_amount_usd.toLocaleString()} - {al.achievement}</p>
+                <p className="text-xs text-stone-400">Swag: {al.swag}</p>
+              </div>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" onClick={() => openEdit(al)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(al.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
               </div>
             </div>
           ))}
@@ -348,11 +419,8 @@ function ConfigAdmin({ config, onRefresh }) {
       await api.put('/admin/config', form);
       toast.success('Config updated');
       onRefresh();
-    } catch (err) {
-      toast.error('Failed to update config');
-    } finally {
-      setSaving(false);
-    }
+    } catch { toast.error('Failed to update config'); }
+    finally { setSaving(false); }
   };
 
   return (

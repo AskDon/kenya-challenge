@@ -118,15 +118,38 @@ class KenyaChallengeAPITester:
         )
         return success and isinstance(response, list) and len(response) > 0
 
-    def test_get_pricing_levels(self):
-        """Test getting pricing levels"""
+    def test_get_walker_types(self):
+        """Test getting walker types"""
         success, response = self.run_test(
-            "Get Pricing Levels",
+            "GET Walker Types (3 types: Basic $25, Builder $97, Leader $250)",
             "GET",
-            "pricing-levels",
+            "walker-types",
             200
         )
-        return success and isinstance(response, list) and len(response) >= 5
+        if success and isinstance(response, list):
+            expected_types = ['Basic', 'Builder', 'Leader']
+            found_types = [wt.get('name') for wt in response]
+            expected_costs = [25, 97, 250]
+            found_costs = [wt.get('cost_usd') for wt in response]
+            print(f"   Found walker types: {found_types}")
+            print(f"   Found costs: {found_costs}")
+            return len(response) == 3 and all(t in found_types for t in expected_types)
+        return False
+
+    def test_get_achievement_levels(self):
+        """Test getting achievement levels"""
+        success, response = self.run_test(
+            "GET Achievement Levels (5 levels: $25 through $25000)",
+            "GET",
+            "achievement-levels", 
+            200
+        )
+        if success and isinstance(response, list):
+            expected_amounts = [25, 97, 250, 2500, 25000]
+            found_amounts = [al.get('total_amount_usd') for al in response]
+            print(f"   Found achievement levels: {found_amounts}")
+            return len(response) == 5 and all(amt in found_amounts for amt in expected_amounts)
+        return False
 
     # User Progress Tests
     def test_user_progress(self):
@@ -314,7 +337,8 @@ def main():
     print("\n🌍 PUBLIC ENDPOINTS")
     print("-" * 30)
     tester.test_get_challenges()
-    tester.test_get_pricing_levels()
+    tester.test_get_walker_types()
+    tester.test_get_achievement_levels()
     
     # User functionality
     print("\n👤 USER FUNCTIONALITY")

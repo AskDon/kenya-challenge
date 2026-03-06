@@ -64,6 +64,8 @@ export default function FundraisingPage() {
   );
 
   const { walker, challenge, total_km, total_steps, total_raised, sponsors, team } = data;
+  const currentAchievement = data.current_achievement;
+  const nextAchievement = data.next_achievement;
   const progressPct = challenge ? Math.min(100, (total_km / challenge.total_distance_km) * 100) : 0;
 
   return (
@@ -150,6 +152,27 @@ export default function FundraisingPage() {
                       );
                     })}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Achievement Level */}
+            {currentAchievement && (
+              <Card className="bg-white rounded-2xl border border-stone-100">
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-bold text-stone-900 mb-3">Achievement Level</h3>
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                    <p className="text-sm font-bold text-emerald-800">{currentAchievement.achievement}</p>
+                    <p className="text-xs text-emerald-600 mt-1">Swag: {currentAchievement.swag}</p>
+                    <p className="text-xs text-stone-500 mt-1">Total raised: ${total_raised}</p>
+                  </div>
+                  {nextAchievement && (
+                    <div className="mt-3 p-3 rounded-xl bg-stone-50">
+                      <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Next Achievement</p>
+                      <p className="text-sm font-medium text-stone-700 mt-1">{nextAchievement.achievement}</p>
+                      <p className="text-xs text-orange-600 font-medium mt-1">${(nextAchievement.total_amount_usd - total_raised).toLocaleString()} more to go</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

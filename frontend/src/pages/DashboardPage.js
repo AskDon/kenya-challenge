@@ -217,23 +217,41 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {/* Pricing Level */}
-          {progress.pricing_level && (
-            <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Your Level</p>
-                    <p className="text-lg font-bold text-stone-900 mt-1">{progress.pricing_level.name}</p>
-                    <p className="text-sm text-stone-500">{progress.pricing_level.description} &middot; {progress.pricing_level.swag}</p>
+          {/* Walker Type & Achievement */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {progress.walker_type && (
+              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Walker Type</p>
+                      <p className="text-lg font-bold text-stone-900 mt-1">{progress.walker_type.name}</p>
+                      <p className="text-sm text-stone-500">${progress.walker_type.cost_usd} registration fee</p>
+                    </div>
+                    <Badge className={user.paid ? 'bg-emerald-100 text-emerald-700 rounded-full' : 'bg-amber-100 text-amber-700 rounded-full'}>
+                      {user.paid ? 'Paid' : 'Pending'}
+                    </Badge>
                   </div>
-                  <Badge className={user.paid ? 'bg-emerald-100 text-emerald-700 rounded-full' : 'bg-amber-100 text-amber-700 rounded-full'}>
-                    {user.paid ? 'Paid' : 'Pending'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            )}
+            {progress.current_achievement && (
+              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                <CardContent className="p-6">
+                  <div>
+                    <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Achievement Level</p>
+                    <p className="text-lg font-bold text-stone-900 mt-1">{progress.current_achievement.achievement}</p>
+                    <p className="text-sm text-stone-500">Swag: {progress.current_achievement.swag}</p>
+                    {progress.next_achievement && (
+                      <p className="text-xs text-orange-600 mt-2 font-medium">
+                        Next: ${progress.next_achievement.total_amount_usd.toLocaleString()} &rarr; {progress.next_achievement.achievement}
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       )}
     </div>
