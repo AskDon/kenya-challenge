@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
 import { toast } from 'sonner';
 import { Heart, MapPin, Footprints, Users, Mountain, ArrowRight, Flag, DollarSign, Eye, EyeOff } from 'lucide-react';
+import ShareButtons from '../components/ShareButtons';
 
 function RouteMap({ challenge, totalKm, progressPct, milestones }) {
   if (!challenge) return null;
@@ -318,6 +319,18 @@ export default function FundraisingPage() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Share Buttons */}
+            <Card className="bg-white rounded-2xl border border-stone-100">
+              <CardContent className="p-6">
+                <ShareButtons
+                  url={window.location.href}
+                  title={`Support ${walker.display_name || walker.full_name}'s Walk for Kenya Education`}
+                  description={challenge ? `Walking ${challenge.name} - ${challenge.total_distance_km}km for Kenya Education Fund` : 'Walking for Kenya Education Fund'}
+                  walkerName={walker.display_name || walker.full_name}
+                />
+              </CardContent>
+            </Card>
 
             {/* Supporters/Pledges List */}
             <Card className="bg-white rounded-2xl border border-stone-100">

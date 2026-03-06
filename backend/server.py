@@ -490,18 +490,46 @@ async def get_my_team(user=Depends(get_current_user)):
     team = await db.teams.find_one({"id": user["team_id"]}, {"_id": 0})
     if not team:
         return None
+    
+    # Get challenge info if exists
+    challenge = None
+    if team.get("challenge_id"):
+        challenge = await db.challenges.find_one({"id": team["challenge_id"]}, {"_id": 0})
+    team["challenge"] = challenge
+    
     members = await db.users.find(
         {"team_id": team["id"]}, {"_id": 0, "password_hash": 0}
     ).to_list(100)
+    
+    total_progress_pct = 0
     for member in members:
         activities = await db.activities.find({"user_id": member["id"]}, {"_id": 0}).to_list(10000)
         member["total_km"] = round(sum(a.get("km", 0) for a in activities), 2)
         member["total_steps"] = sum(a.get("steps", 0) for a in activities)
         sponsors = await db.sponsors.find({"walker_id": member["id"]}, {"_id": 0}).to_list(10000)
         member["total_raised"] = round(sum(s.get("amount", 0) for s in sponsors), 2)
+        member["is_leader"] = member["id"] == team.get("creator_id")
+        
+        # Compute member's progress percentage based on their challenge
+        member_challenge = None
+        if member.get("challenge_id"):
+            member_challenge = await db.challenges.find_one({"id": member["challenge_id"]}, {"_id": 0})
+        if member_challenge and member_challenge.get("total_distance_km", 0) > 0:
+            member["progress_pct"] = min(100, round((member["total_km"] / member_challenge["total_distance_km"]) * 100, 1))
+        else:
+            member["progress_pct"] = 0
+        total_progress_pct += member["progress_pct"]
+        member["challenge"] = member_challenge
+    
     team["members"] = members
     team["total_km"] = round(sum(m["total_km"] for m in members), 2)
     team["total_raised"] = round(sum(m["total_raised"] for m in members), 2)
+    team["avg_progress_pct"] = round(total_progress_pct / len(members), 1) if members else 0
+    
+    # Get team leader info
+    leader = next((m for m in members if m["id"] == team.get("creator_id")), None)
+    team["leader"] = leader
+    
     return team
 
 @api_router.get("/teams/invite/{invite_code}")
@@ -529,6 +557,21 @@ async def leave_team(user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Not in a team")
     await db.users.update_one({"id": user["id"]}, {"$set": {"team_id": None}})
     return {"message": "Left team"}
+
+@api_router.delete("/teams/members/{member_id}")
+async def remove_team_member(member_id: str, user=Depends(get_current_user)):
+    if not user.get("team_id"):
+        raise HTTPException(status_code=400, detail="Not in a team")
+    team = await db.teams.find_one({"id": user["team_id"]}, {"_id": 0})
+    if not team or team.get("creator_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Only team leader can remove members")
+    if member_id == user["id"]:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself")
+    member = await db.users.find_one({"id": member_id, "team_id": user["team_id"]})
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found in team")
+    await db.users.update_one({"id": member_id}, {"$set": {"team_id": None}})
+    return {"message": "Member removed from team"}
 
 
 # ==========================================
