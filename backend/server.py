@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -8,11 +9,14 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
+import shutil
 from datetime import datetime, timezone
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 
 ROOT_DIR = Path(__file__).parent
+UPLOADS_DIR = ROOT_DIR / "uploads"
+UPLOADS_DIR.mkdir(exist_ok=True)
 load_dotenv(ROOT_DIR / '.env')
 
 # MongoDB connection
@@ -121,6 +125,27 @@ class SponsorCreate(BaseModel):
     amount: float
     message: Optional[str] = ""
 
+class SponsorshipLevelCreate(BaseModel):
+    name: str
+    max_sponsors: Optional[int] = None
+    display_order: Optional[int] = 0
+
+class SponsorshipLevelUpdate(BaseModel):
+    name: Optional[str] = None
+    max_sponsors: Optional[int] = None
+    display_order: Optional[int] = None
+
+class CorporateSponsorCreate(BaseModel):
+    name: str
+    level_id: str
+    website_url: Optional[str] = None
+
+class CorporateSponsorUpdate(BaseModel):
+    name: Optional[str] = None
+    level_id: Optional[str] = None
+    website_url: Optional[str] = None
+    logo_url: Optional[str] = None
+
 class PledgeCreate(BaseModel):
     pledge_type: str  # "per_km" or "total"
     pledge_per_km: Optional[float] = None
@@ -134,14 +159,6 @@ class SupporterSignup(BaseModel):
     pledge_type: str  # "per_km" or "total"
     pledge_per_km: Optional[float] = None
     pledge_total: Optional[float] = None
-
-class CorporateSponsorCreate(BaseModel):
-    company_name: str
-    contact_name: str
-    email: str
-    phone: Optional[str] = ""
-    package: str
-    message: Optional[str] = ""
 
 class ConfigUpdate(BaseModel):
     name: Optional[str] = None
@@ -849,28 +866,6 @@ async def get_fundraising_page(walker_id: str):
 
 
 # ==========================================
-# Corporate Sponsor Routes
-# ==========================================
-
-@api_router.post("/corporate-sponsors")
-async def create_corporate_sponsor(req: CorporateSponsorCreate):
-    sponsor = {
-        "id": str(uuid.uuid4()),
-        **req.model_dump(),
-        "status": "pending",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.corporate_sponsors.insert_one(sponsor)
-    resp = {k: v for k, v in sponsor.items() if k != "_id"}
-    return resp
-
-@api_router.get("/corporate-sponsors")
-async def list_corporate_sponsors(user=Depends(get_admin_user)):
-    sponsors = await db.corporate_sponsors.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
-    return sponsors
-
-
-# ==========================================
 # Leaderboard Routes
 # ==========================================
 
@@ -1267,7 +1262,194 @@ async def seed_data():
     ]
     await db.sponsors.insert_many(mary_sponsors)
 
+    # Seed sponsorship levels
+    sponsorship_levels = [
+        {"id": "level-title", "name": "Title Sponsor", "max_sponsors": 1, "display_order": 1, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": "level-gold", "name": "Gold Sponsor", "max_sponsors": 5, "display_order": 2, "created_at": datetime.now(timezone.utc).isoformat()},
+        {"id": "level-silver", "name": "Silver Sponsor", "max_sponsors": 15, "display_order": 3, "created_at": datetime.now(timezone.utc).isoformat()},
+    ]
+    await db.sponsorship_levels.insert_many(sponsorship_levels)
+
     logger.info("Seed data created successfully!")
+
+
+# ==========================================
+# Corporate Sponsors CRUD
+# ==========================================
+
+@api_router.get("/sponsorship-levels")
+async def get_sponsorship_levels():
+    levels = await db.sponsorship_levels.find({}, {"_id": 0}).sort("display_order", 1).to_list(100)
+    return levels
+
+@api_router.post("/sponsorship-levels")
+async def create_sponsorship_level(data: SponsorshipLevelCreate, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    level = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "max_sponsors": data.max_sponsors,
+        "display_order": data.display_order or 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.sponsorship_levels.insert_one(level)
+    del level["_id"]
+    return level
+
+@api_router.put("/sponsorship-levels/{level_id}")
+async def update_sponsorship_level(level_id: str, data: SponsorshipLevelUpdate, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    updates = {k: v for k, v in data.dict().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updates provided")
+    result = await db.sponsorship_levels.update_one({"id": level_id}, {"$set": updates})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Level not found")
+    return {"message": "Updated"}
+
+@api_router.delete("/sponsorship-levels/{level_id}")
+async def delete_sponsorship_level(level_id: str, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    # Check if any sponsors are using this level
+    sponsor_count = await db.corporate_sponsors.count_documents({"level_id": level_id})
+    if sponsor_count > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {sponsor_count} sponsors are using this level")
+    result = await db.sponsorship_levels.delete_one({"id": level_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Level not found")
+    return {"message": "Deleted"}
+
+@api_router.get("/corporate-sponsors")
+async def get_corporate_sponsors():
+    sponsors = await db.corporate_sponsors.find({}, {"_id": 0}).to_list(100)
+    # Attach level info
+    levels_list = await db.sponsorship_levels.find({}, {"_id": 0}).to_list(100)
+    levels_map = {lvl["id"]: lvl for lvl in levels_list}
+    for s in sponsors:
+        s["level"] = levels_map.get(s.get("level_id"))
+    return sponsors
+
+@api_router.get("/corporate-sponsors/public")
+async def get_public_sponsors():
+    """Get sponsors grouped by level for public display"""
+    levels = await db.sponsorship_levels.find({}, {"_id": 0}).sort("display_order", 1).to_list(100)
+    sponsors = await db.corporate_sponsors.find({}, {"_id": 0}).to_list(100)
+    
+    result = []
+    for level in levels:
+        level_sponsors = [s for s in sponsors if s.get("level_id") == level["id"]]
+        if level_sponsors:  # Only include levels that have sponsors
+            result.append({
+                "level": level,
+                "sponsors": level_sponsors
+            })
+    return result
+
+@api_router.post("/corporate-sponsors")
+async def create_corporate_sponsor(data: CorporateSponsorCreate, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    # Verify level exists
+    level = await db.sponsorship_levels.find_one({"id": data.level_id})
+    if not level:
+        raise HTTPException(status_code=400, detail="Invalid sponsorship level")
+    # Check max sponsors limit
+    if level.get("max_sponsors"):
+        current_count = await db.corporate_sponsors.count_documents({"level_id": data.level_id})
+        if current_count >= level["max_sponsors"]:
+            raise HTTPException(status_code=400, detail=f"Maximum sponsors ({level['max_sponsors']}) reached for this level")
+    sponsor = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "level_id": data.level_id,
+        "logo_url": None,
+        "website_url": data.website_url,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.corporate_sponsors.insert_one(sponsor)
+    del sponsor["_id"]
+    return sponsor
+
+@api_router.put("/corporate-sponsors/{sponsor_id}")
+async def update_corporate_sponsor(sponsor_id: str, data: CorporateSponsorUpdate, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    updates = {k: v for k, v in data.dict().items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="No updates provided")
+    if "level_id" in updates:
+        level = await db.sponsorship_levels.find_one({"id": updates["level_id"]})
+        if not level:
+            raise HTTPException(status_code=400, detail="Invalid sponsorship level")
+    result = await db.corporate_sponsors.update_one({"id": sponsor_id}, {"$set": updates})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    return {"message": "Updated"}
+
+@api_router.delete("/corporate-sponsors/{sponsor_id}")
+async def delete_corporate_sponsor(sponsor_id: str, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    # Get sponsor to delete their logo
+    sponsor = await db.corporate_sponsors.find_one({"id": sponsor_id})
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    # Delete logo file if exists
+    if sponsor.get("logo_url"):
+        logo_path = UPLOADS_DIR / sponsor["logo_url"].split("/")[-1]
+        if logo_path.exists():
+            logo_path.unlink()
+    await db.corporate_sponsors.delete_one({"id": sponsor_id})
+    return {"message": "Deleted"}
+
+@api_router.post("/corporate-sponsors/{sponsor_id}/logo")
+async def upload_sponsor_logo(sponsor_id: str, file: UploadFile = File(...), user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    sponsor = await db.corporate_sponsors.find_one({"id": sponsor_id})
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    
+    # Validate file type
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PNG, JPEG, WebP, SVG")
+    
+    # Delete old logo if exists
+    if sponsor.get("logo_url"):
+        old_path = UPLOADS_DIR / sponsor["logo_url"].split("/")[-1]
+        if old_path.exists():
+            old_path.unlink()
+    
+    # Save new logo
+    ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+    filename = f"sponsor_{sponsor_id}.{ext}"
+    file_path = UPLOADS_DIR / filename
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    logo_url = f"/api/uploads/{filename}"
+    await db.corporate_sponsors.update_one({"id": sponsor_id}, {"$set": {"logo_url": logo_url}})
+    
+    return {"logo_url": logo_url}
+
+@api_router.delete("/corporate-sponsors/{sponsor_id}/logo")
+async def delete_sponsor_logo(sponsor_id: str, user=Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    sponsor = await db.corporate_sponsors.find_one({"id": sponsor_id})
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Sponsor not found")
+    if sponsor.get("logo_url"):
+        logo_path = UPLOADS_DIR / sponsor["logo_url"].split("/")[-1]
+        if logo_path.exists():
+            logo_path.unlink()
+    await db.corporate_sponsors.update_one({"id": sponsor_id}, {"$set": {"logo_url": None}})
+    return {"message": "Logo deleted"}
 
 
 # ==========================================
@@ -1283,6 +1465,9 @@ async def shutdown_db_client():
     client.close()
 
 app.include_router(api_router)
+
+# Serve uploaded files
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,

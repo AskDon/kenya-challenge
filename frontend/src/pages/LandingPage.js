@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import api from '../lib/api';
-import { ArrowRight, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap } from 'lucide-react';
+import { ArrowRight, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap, Building2 } from 'lucide-react';
 
 const HERO_BG = 'https://images.unsplash.com/photo-1738507967372-67c692309a07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
 const STUDENTS_IMG = 'https://images.unsplash.com/photo-1729691032175-d6edd1581a31?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwc3R1ZGVudHMlMjBzbWlsaW5nJTIwc2Nob29sJTIwdW5pZm9ybSUyMGtlbnlhfGVufDB8fHx8MTc3MDc0NzM1MHww&ixlib=rb-4.1.0&q=85';
@@ -13,9 +13,11 @@ const WALKERS_IMG = 'https://images.unsplash.com/photo-1632089401802-57a6747b3dd
 export default function LandingPage() {
   const { user } = useAuth();
   const [challenges, setChallenges] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
 
   useEffect(() => {
     api.get('/challenges').then(r => setChallenges(r.data)).catch(() => {});
+    api.get('/corporate-sponsors/public').then(r => setSponsors(r.data)).catch(() => {});
   }, []);
 
   return (
@@ -212,6 +214,62 @@ export default function LandingPage() {
           />
         </div>
       </section>
+
+      {/* Sponsors Section */}
+      {sponsors.length > 0 && (
+        <section className="py-16 md:py-20 bg-stone-50" data-testid="sponsors-section">
+          <div className="container-app">
+            <div className="text-center mb-12">
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Building2 className="w-5 h-5 text-orange-600" />
+                <span className="text-orange-600 font-medium text-sm tracking-wider uppercase">Our Partners</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-stone-900">
+                Thank You to Our Sponsors
+              </h2>
+              <p className="text-stone-500 mt-2 max-w-xl mx-auto">
+                The Kenya Challenge is made possible by these generous organizations.
+              </p>
+            </div>
+
+            <div className="space-y-12">
+              {sponsors.map(({ level, sponsors: levelSponsors }) => (
+                <div key={level.id} className="text-center" data-testid={`sponsor-level-${level.id}`}>
+                  <h3 className="text-lg font-bold text-stone-800 mb-6 inline-block border-b-2 border-orange-300 pb-1">
+                    {level.name}
+                  </h3>
+                  <div className="flex flex-wrap justify-center items-center gap-8">
+                    {levelSponsors.map(sponsor => (
+                      <a
+                        key={sponsor.id}
+                        href={sponsor.website_url || '#'}
+                        target={sponsor.website_url ? '_blank' : undefined}
+                        rel="noopener noreferrer"
+                        className="group"
+                        data-testid={`sponsor-${sponsor.id}`}
+                      >
+                        {sponsor.logo_url ? (
+                          <div className="w-32 h-20 md:w-40 md:h-24 bg-white rounded-xl shadow-sm border border-stone-100 p-3 flex items-center justify-center transition-all group-hover:shadow-md group-hover:scale-105">
+                            <img
+                              src={sponsor.logo_url}
+                              alt={sponsor.name}
+                              className="max-w-full max-h-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-32 h-20 md:w-40 md:h-24 bg-white rounded-xl shadow-sm border border-stone-100 p-3 flex items-center justify-center transition-all group-hover:shadow-md group-hover:scale-105">
+                            <span className="text-sm font-medium text-stone-700 text-center">{sponsor.name}</span>
+                          </div>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer className="py-8 bg-stone-900 border-t border-stone-800">

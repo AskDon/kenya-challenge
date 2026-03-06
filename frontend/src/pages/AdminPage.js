@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -7,9 +7,10 @@ import { Textarea } from '../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints } from 'lucide-react';
+import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image } from 'lucide-react';
 
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
@@ -18,6 +19,7 @@ export default function AdminPage() {
   const [achievementLevels, setAchievementLevels] = useState([]);
   const [users, setUsers] = useState([]);
   const [corpSponsors, setCorpSponsors] = useState([]);
+  const [sponsorshipLevels, setSponsorshipLevels] = useState([]);
   const [config, setConfig] = useState({});
   const [loading, setLoading] = useState(true);
 
@@ -30,7 +32,8 @@ export default function AdminPage() {
       api.get('/admin/users'),
       api.get('/admin/config'),
       api.get('/corporate-sponsors').catch(() => ({ data: [] })),
-    ]).then(([s, c, wt, al, u, cfg, cs]) => {
+      api.get('/sponsorship-levels').catch(() => ({ data: [] })),
+    ]).then(([s, c, wt, al, u, cfg, cs, sl]) => {
       setStats(s.data);
       setChallenges(c.data);
       setWalkerTypes(wt.data);
@@ -38,6 +41,7 @@ export default function AdminPage() {
       setUsers(u.data);
       setConfig(cfg.data);
       setCorpSponsors(cs.data);
+      setSponsorshipLevels(sl.data);
     }).catch(() => toast.error('Failed to load admin data'))
       .finally(() => setLoading(false));
   };
@@ -127,26 +131,11 @@ export default function AdminPage() {
 
         {/* Corporate */}
         <TabsContent value="corporate">
-          <Card className="bg-white rounded-2xl border border-stone-100">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-bold text-stone-900 mb-4">Corporate Sponsors ({corpSponsors.length})</h3>
-              {corpSponsors.length === 0 ? (
-                <p className="text-stone-400 text-center py-6">No corporate sponsors yet</p>
-              ) : (
-                <div className="space-y-2">
-                  {corpSponsors.map(cs => (
-                    <div key={cs.id} className="p-3 rounded-xl bg-stone-50">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-stone-900">{cs.company_name}</p>
-                        <Badge className="rounded-full text-xs bg-stone-100 text-stone-600">{cs.package}</Badge>
-                      </div>
-                      <p className="text-xs text-stone-400">{cs.contact_name} &middot; {cs.email}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <CorporateSponsorsAdmin 
+            levels={sponsorshipLevels} 
+            sponsors={corpSponsors} 
+            onRefresh={loadAll} 
+          />
         </TabsContent>
 
         {/* Config */}
@@ -438,5 +427,266 @@ function ConfigAdmin({ config, onRefresh }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
+  // Sponsorship Levels state
+  const [levelForm, setLevelForm] = useState({ name: '', max_sponsors: '', display_order: '' });
+  const [editingLevel, setEditingLevel] = useState(null);
+  const [levelOpen, setLevelOpen] = useState(false);
+
+  // Sponsors state
+  const [sponsorForm, setSponsorForm] = useState({ name: '', level_id: '', website_url: '' });
+  const [editingSponsor, setEditingSponsor] = useState(null);
+  const [sponsorOpen, setSponsorOpen] = useState(false);
+  const [uploading, setUploading] = useState(null);
+  const fileInputRef = useRef(null);
+
+  // Level CRUD
+  const openCreateLevel = () => { setLevelForm({ name: '', max_sponsors: '', display_order: '' }); setEditingLevel(null); setLevelOpen(true); };
+  const openEditLevel = (l) => { setLevelForm({ name: l.name, max_sponsors: String(l.max_sponsors || ''), display_order: String(l.display_order || 0) }); setEditingLevel(l.id); setLevelOpen(true); };
+
+  const handleSaveLevel = async () => {
+    const payload = { name: levelForm.name, max_sponsors: levelForm.max_sponsors ? parseInt(levelForm.max_sponsors) : null, display_order: parseInt(levelForm.display_order) || 0 };
+    try {
+      if (editingLevel) { await api.put(`/sponsorship-levels/${editingLevel}`, payload); toast.success('Level updated'); }
+      else { await api.post('/sponsorship-levels', payload); toast.success('Level created'); }
+      setLevelOpen(false); onRefresh();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
+
+  const handleDeleteLevel = async (id) => {
+    if (!window.confirm('Delete this sponsorship level?')) return;
+    try { await api.delete(`/sponsorship-levels/${id}`); toast.success('Deleted'); onRefresh(); }
+    catch (err) { toast.error(err.response?.data?.detail || 'Failed to delete'); }
+  };
+
+  // Sponsor CRUD
+  const openCreateSponsor = () => { setSponsorForm({ name: '', level_id: levels[0]?.id || '', website_url: '' }); setEditingSponsor(null); setSponsorOpen(true); };
+  const openEditSponsor = (s) => { setSponsorForm({ name: s.name, level_id: s.level_id, website_url: s.website_url || '' }); setEditingSponsor(s.id); setSponsorOpen(true); };
+
+  const handleSaveSponsor = async () => {
+    const payload = { name: sponsorForm.name, level_id: sponsorForm.level_id, website_url: sponsorForm.website_url || null };
+    try {
+      if (editingSponsor) { await api.put(`/corporate-sponsors/${editingSponsor}`, payload); toast.success('Sponsor updated'); }
+      else { await api.post('/corporate-sponsors', payload); toast.success('Sponsor created'); }
+      setSponsorOpen(false); onRefresh();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed'); }
+  };
+
+  const handleDeleteSponsor = async (id) => {
+    if (!window.confirm('Delete this sponsor?')) return;
+    try { await api.delete(`/corporate-sponsors/${id}`); toast.success('Deleted'); onRefresh(); }
+    catch { toast.error('Failed to delete'); }
+  };
+
+  const handleUploadLogo = async (sponsorId, file) => {
+    setUploading(sponsorId);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post(`/corporate-sponsors/${sponsorId}/logo`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Logo uploaded');
+      onRefresh();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to upload logo');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const handleDeleteLogo = async (sponsorId) => {
+    if (!window.confirm('Remove logo?')) return;
+    try {
+      await api.delete(`/corporate-sponsors/${sponsorId}/logo`);
+      toast.success('Logo removed');
+      onRefresh();
+    } catch { toast.error('Failed'); }
+  };
+
+  const getLevelName = (levelId) => levels.find(l => l.id === levelId)?.name || 'Unknown';
+
+  return (
+    <div className="space-y-6">
+      {/* Sponsorship Levels */}
+      <Card className="bg-white rounded-2xl border border-stone-100">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-stone-900">Sponsorship Levels ({levels.length})</h3>
+              <p className="text-xs text-stone-400 mt-0.5">Define sponsorship tiers (e.g., Title, Gold, Silver)</p>
+            </div>
+            <Dialog open={levelOpen} onOpenChange={setLevelOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateLevel} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-add-sponsor-level-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Add Level
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editingLevel ? 'Edit Level' : 'New Sponsorship Level'}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm">Level Name</Label>
+                    <Input value={levelForm.name} onChange={e => setLevelForm(f => ({...f, name: e.target.value}))} placeholder="e.g., Title Sponsor" className="mt-1 rounded-xl" data-testid="admin-level-name" />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Max Sponsors (leave empty for unlimited)</Label>
+                    <Input type="number" value={levelForm.max_sponsors} onChange={e => setLevelForm(f => ({...f, max_sponsors: e.target.value}))} placeholder="e.g., 1" className="mt-1 rounded-xl" data-testid="admin-level-max" />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Display Order</Label>
+                    <Input type="number" value={levelForm.display_order} onChange={e => setLevelForm(f => ({...f, display_order: e.target.value}))} placeholder="1" className="mt-1 rounded-xl" data-testid="admin-level-order" />
+                  </div>
+                  <Button onClick={handleSaveLevel} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-level-save-btn">{editingLevel ? 'Update' : 'Create'}</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <div className="space-y-2">
+            {levels.length === 0 ? (
+              <p className="text-stone-400 text-center py-4">No sponsorship levels yet. Add one to get started.</p>
+            ) : (
+              levels.map(l => {
+                const sponsorCount = sponsors.filter(s => s.level_id === l.id).length;
+                return (
+                  <div key={l.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-level-${l.id}`}>
+                    <div>
+                      <p className="text-sm font-medium text-stone-900">{l.name}</p>
+                      <p className="text-xs text-stone-400">
+                        {sponsorCount} sponsor{sponsorCount !== 1 ? 's' : ''}
+                        {l.max_sponsors ? ` / max ${l.max_sponsors}` : ' / unlimited'}
+                        {' · Order: '}{l.display_order}
+                      </p>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => openEditLevel(l)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteLevel(l.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Corporate Sponsors */}
+      <Card className="bg-white rounded-2xl border border-stone-100">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-bold text-stone-900">Corporate Sponsors ({sponsors.length})</h3>
+              <p className="text-xs text-stone-400 mt-0.5">Manage sponsor names and logos</p>
+            </div>
+            <Dialog open={sponsorOpen} onOpenChange={setSponsorOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateSponsor} disabled={levels.length === 0} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50" data-testid="admin-add-sponsor-btn">
+                  <Plus className="w-4 h-4 mr-1" /> Add Sponsor
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>{editingSponsor ? 'Edit Sponsor' : 'New Sponsor'}</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm">Sponsor Name</Label>
+                    <Input value={sponsorForm.name} onChange={e => setSponsorForm(f => ({...f, name: e.target.value}))} placeholder="Company name" className="mt-1 rounded-xl" data-testid="admin-sponsor-name" />
+                  </div>
+                  <div>
+                    <Label className="text-sm">Sponsorship Level</Label>
+                    <Select value={sponsorForm.level_id} onValueChange={v => setSponsorForm(f => ({...f, level_id: v}))}>
+                      <SelectTrigger className="mt-1 rounded-xl" data-testid="admin-sponsor-level">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {levels.map(l => (
+                          <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-sm">Website URL (optional)</Label>
+                    <Input value={sponsorForm.website_url} onChange={e => setSponsorForm(f => ({...f, website_url: e.target.value}))} placeholder="https://..." className="mt-1 rounded-xl" data-testid="admin-sponsor-website" />
+                  </div>
+                  <Button onClick={handleSaveSponsor} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-sponsor-save-btn">{editingSponsor ? 'Update' : 'Create'}</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          
+          {levels.length === 0 ? (
+            <p className="text-stone-400 text-center py-4">Create sponsorship levels first before adding sponsors.</p>
+          ) : sponsors.length === 0 ? (
+            <p className="text-stone-400 text-center py-4">No sponsors yet. Click "Add Sponsor" to get started.</p>
+          ) : (
+            <div className="space-y-3">
+              {sponsors.map(s => (
+                <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl bg-stone-50" data-testid={`admin-sponsor-${s.id}`}>
+                  {/* Logo */}
+                  <div className="w-16 h-16 rounded-xl bg-white border border-stone-200 flex items-center justify-center overflow-hidden shrink-0">
+                    {s.logo_url ? (
+                      <img src={s.logo_url} alt={s.name} className="w-full h-full object-contain p-1" />
+                    ) : (
+                      <Image className="w-6 h-6 text-stone-300" />
+                    )}
+                  </div>
+                  
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-stone-900">{s.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge className="rounded-full text-xs bg-orange-100 text-orange-700">{getLevelName(s.level_id)}</Badge>
+                      {s.website_url && <span className="text-xs text-stone-400 truncate">{s.website_url}</span>}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files[0]) handleUploadLogo(s.id, e.target.files[0]);
+                        e.target.value = '';
+                      }}
+                      data-testid={`upload-input-${s.id}`}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const input = document.querySelector(`[data-testid="upload-input-${s.id}"]`);
+                        if (input) input.click();
+                      }}
+                      disabled={uploading === s.id}
+                      className="rounded-full"
+                      data-testid={`upload-logo-${s.id}`}
+                    >
+                      {uploading === s.id ? (
+                        <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4 text-stone-400" />
+                      )}
+                    </Button>
+                    {s.logo_url && (
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteLogo(s.id)} className="rounded-full" data-testid={`delete-logo-${s.id}`}>
+                        <X className="w-4 h-4 text-stone-400" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => openEditSponsor(s)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDeleteSponsor(s.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
