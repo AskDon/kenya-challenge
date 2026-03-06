@@ -28,6 +28,8 @@ export default function LoginPage() {
       const hasChallenge = res.data.user?.challenge_id && res.data.user?.paid;
       if (role === 'admin') {
         navigate('/admin');
+      } else if (role === 'supporter') {
+        navigate('/supporter-dashboard');
       } else if (!hasChallenge) {
         navigate('/onboarding');
       } else {

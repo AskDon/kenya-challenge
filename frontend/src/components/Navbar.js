@@ -33,14 +33,26 @@ export default function Navbar() {
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   ];
 
+  const supporterLinks = [
+    { to: '/supporter-dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+  ];
+
   const publicLinks = [
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   ];
 
-  const links = user ? (user.role === 'admin' ? [
-    { to: '/admin', label: 'Admin', icon: Settings },
-    { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
-  ] : walkerLinks) : publicLinks;
+  const getLinks = () => {
+    if (!user) return publicLinks;
+    if (user.role === 'admin') return [
+      { to: '/admin', label: 'Admin', icon: Settings },
+      { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
+    ];
+    if (user.role === 'supporter') return supporterLinks;
+    return walkerLinks;
+  };
+
+  const links = getLinks();
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-stone-200" data-testid="navbar">
@@ -90,9 +102,14 @@ export default function Navbar() {
                 <DropdownMenuItem onClick={() => navigate('/profile')} data-testid="nav-profile-link">
                   <User className="w-4 h-4 mr-2" /> Profile
                 </DropdownMenuItem>
-                {user.role !== 'admin' && (
+                {user.role === 'walker' && (
                   <DropdownMenuItem onClick={() => navigate(`/fundraise/${user.id}`)} data-testid="nav-fundraise-link">
                     <Heart className="w-4 h-4 mr-2" /> My Fundraising Page
+                  </DropdownMenuItem>
+                )}
+                {user.role === 'supporter' && (
+                  <DropdownMenuItem onClick={() => navigate('/supporter-dashboard')} data-testid="nav-supporter-dashboard-link">
+                    <Heart className="w-4 h-4 mr-2" /> My Pledges
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />

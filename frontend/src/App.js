@@ -16,6 +16,7 @@ import LeaderboardPage from './pages/LeaderboardPage';
 import AdminPage from './pages/AdminPage';
 import ProfilePage from './pages/ProfilePage';
 import SupportersPage from './pages/SupportersPage';
+import SupporterDashboard from './pages/SupporterDashboard';
 import OnboardingPage from './pages/OnboardingPage';
 import api from './lib/api';
 import { toast } from 'sonner';
@@ -86,6 +87,7 @@ function AppRoutes() {
       <Route path="/activity" element={<PrivateRoute><ActivityPage /></PrivateRoute>} />
       <Route path="/team" element={<PrivateRoute><TeamPage /></PrivateRoute>} />
       <Route path="/supporters" element={<PrivateRoute><SupportersPage /></PrivateRoute>} />
+      <Route path="/supporter-dashboard" element={<PrivateRoute><SupporterDashboard /></PrivateRoute>} />
       <Route path="/fundraise/:userId" element={<FundraisingPage />} />
       <Route path="/leaderboard" element={<LeaderboardPage />} />
       <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />

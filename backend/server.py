@@ -121,6 +121,20 @@ class SponsorCreate(BaseModel):
     amount: float
     message: Optional[str] = ""
 
+class PledgeCreate(BaseModel):
+    pledge_type: str  # "per_km" or "total"
+    pledge_per_km: Optional[float] = None
+    pledge_total: Optional[float] = None
+
+class SupporterSignup(BaseModel):
+    full_name: str
+    email: str
+    password: str
+    walker_id: str
+    pledge_type: str  # "per_km" or "total"
+    pledge_per_km: Optional[float] = None
+    pledge_total: Optional[float] = None
+
 class CorporateSponsorCreate(BaseModel):
     company_name: str
     contact_name: str
@@ -543,6 +557,144 @@ async def list_supporter_invites(user=Depends(get_current_user)):
 
 
 # ==========================================
+# Pledge & Supporter Signup Routes
+# ==========================================
+
+@api_router.post("/pledges/{walker_id}")
+async def create_pledge(walker_id: str, req: PledgeCreate, authorization: Optional[str] = Header(None)):
+    walker = await db.users.find_one({"id": walker_id})
+    if not walker:
+        raise HTTPException(status_code=404, detail="Walker not found")
+
+    supporter_user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            token = authorization.split(" ")[1]
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            supporter_user_id = payload.get("sub")
+        except JWTError:
+            pass
+
+    pledge = {
+        "id": str(uuid.uuid4()),
+        "walker_id": walker_id,
+        "challenge_id": walker.get("challenge_id"),
+        "supporter_user_id": supporter_user_id,
+        "pledge_type": req.pledge_type,
+        "pledge_per_km": req.pledge_per_km,
+        "pledge_total": req.pledge_total,
+        "calculated_amount": req.pledge_total if req.pledge_type == "total" else 0,
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.pledges.insert_one(pledge)
+    resp = {k: v for k, v in pledge.items() if k != "_id"}
+    return resp
+
+@api_router.put("/pledges/{pledge_id}/link-supporter")
+async def link_pledge_to_supporter(pledge_id: str, user=Depends(get_current_user)):
+    pledge = await db.pledges.find_one({"id": pledge_id})
+    if not pledge:
+        raise HTTPException(status_code=404, detail="Pledge not found")
+    await db.pledges.update_one({"id": pledge_id}, {"$set": {"supporter_user_id": user["id"]}})
+    updated = await db.pledges.find_one({"id": pledge_id}, {"_id": 0})
+    return updated
+
+@api_router.post("/supporters/signup")
+async def supporter_signup(req: SupporterSignup):
+    existing = await db.users.find_one({"email": req.email.lower()})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered. Please log in instead.")
+
+    user = {
+        "id": str(uuid.uuid4()),
+        "email": req.email.lower(),
+        "password_hash": hash_password(req.password),
+        "full_name": req.full_name,
+        "display_name": req.full_name,
+        "role": "supporter",
+        "challenge_id": None,
+        "walker_type_id": None,
+        "paid": False,
+        "team_id": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(user)
+    token = create_token(user["id"], user["role"])
+
+    walker = await db.users.find_one({"id": req.walker_id})
+    pledge = {
+        "id": str(uuid.uuid4()),
+        "walker_id": req.walker_id,
+        "challenge_id": walker.get("challenge_id") if walker else None,
+        "supporter_user_id": user["id"],
+        "pledge_type": req.pledge_type,
+        "pledge_per_km": req.pledge_per_km,
+        "pledge_total": req.pledge_total,
+        "calculated_amount": req.pledge_total if req.pledge_type == "total" else 0,
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.pledges.insert_one(pledge)
+
+    user_resp = {k: v for k, v in user.items() if k not in ("password_hash", "_id")}
+    pledge_resp = {k: v for k, v in pledge.items() if k != "_id"}
+    return {"token": token, "user": user_resp, "pledge": pledge_resp}
+
+@api_router.post("/supporters/login-and-pledge")
+async def supporter_login_and_pledge(
+    email: str = "",
+    password: str = "",
+    walker_id: str = "",
+    pledge_type: str = "",
+    pledge_per_km: Optional[float] = None,
+    pledge_total: Optional[float] = None,
+):
+    pass
+
+@api_router.get("/supporters/dashboard")
+async def supporter_dashboard(user=Depends(get_current_user)):
+    pledges = await db.pledges.find(
+        {"supporter_user_id": user["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+
+    result = []
+    for p in pledges:
+        walker = await db.users.find_one({"id": p["walker_id"]}, {"_id": 0, "password_hash": 0})
+        challenge = None
+        if p.get("challenge_id"):
+            challenge = await db.challenges.find_one({"id": p["challenge_id"]}, {"_id": 0})
+        activities = await db.activities.find({"user_id": p["walker_id"]}, {"_id": 0}).to_list(10000)
+        total_km = round(sum(a.get("km", 0) for a in activities), 2)
+        progress_pct = 0
+        if challenge and challenge.get("total_distance_km", 0) > 0:
+            progress_pct = min(100, round((total_km / challenge["total_distance_km"]) * 100, 1))
+        calculated = p.get("calculated_amount", 0)
+        if p["pledge_type"] == "per_km" and p.get("pledge_per_km"):
+            calculated = round(p["pledge_per_km"] * total_km, 2)
+        result.append({
+            **p,
+            "walker": walker,
+            "challenge": challenge,
+            "walker_total_km": total_km,
+            "walker_progress_pct": progress_pct,
+            "calculated_amount": calculated,
+        })
+    return result
+
+@api_router.get("/pledges/{walker_id}")
+async def list_pledges_for_walker(walker_id: str):
+    pledges = await db.pledges.find(
+        {"walker_id": walker_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    for p in pledges:
+        if p.get("supporter_user_id"):
+            supporter = await db.users.find_one({"id": p["supporter_user_id"]}, {"_id": 0, "password_hash": 0})
+            p["supporter"] = supporter
+    return pledges
+
+
+# ==========================================
 # Sponsor Routes
 # ==========================================
 
@@ -611,7 +763,20 @@ async def get_fundraising_page(walker_id: str):
                     tm_type = await db.walker_types.find_one({"id": tm["walker_type_id"]}, {"_id": 0})
                     if tm_type:
                         teammate_fees += tm_type.get("cost_usd", 0)
-    total_raised = round(walker_fee + teammate_fees + supporter_pledges, 2)
+    # Get pledges too
+    pledges = await db.pledges.find({"walker_id": walker_id}, {"_id": 0}).to_list(1000)
+    pledge_total_value = 0
+    for p in pledges:
+        if p["pledge_type"] == "per_km" and p.get("pledge_per_km"):
+            pledge_total_value += p["pledge_per_km"] * total_km
+        elif p.get("pledge_total"):
+            pledge_total_value += p["pledge_total"]
+        if p.get("supporter_user_id"):
+            sup = await db.users.find_one({"id": p["supporter_user_id"]}, {"_id": 0, "password_hash": 0})
+            p["supporter"] = sup
+    pledge_total_value = round(pledge_total_value, 2)
+
+    total_raised = round(walker_fee + teammate_fees + supporter_pledges + pledge_total_value, 2)
     # Compute achievement level
     achievement_levels = await db.achievement_levels.find({}, {"_id": 0}).sort("total_amount_usd", 1).to_list(100)
     current_achievement = None
@@ -633,6 +798,8 @@ async def get_fundraising_page(walker_id: str):
         "teammate_fees": teammate_fees,
         "sponsors": sponsors,
         "team": team,
+        "pledges": pledges,
+        "pledge_total_value": pledge_total_value,
         "current_achievement": current_achievement,
         "next_achievement": next_achievement,
     }
