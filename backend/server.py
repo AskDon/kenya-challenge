@@ -624,29 +624,56 @@ async def get_my_team(user=Depends(get_current_user)):
         challenge = await db.challenges.find_one({"id": team["challenge_id"]}, {"_id": 0})
     team["challenge"] = challenge
     
-    members = await db.users.find(
-        {"team_id": team["id"]}, {"_id": 0, "password_hash": 0}
-    ).to_list(100)
+    # Get all members with their activities and sponsors in one pipeline
+    member_pipeline = [
+        {"$match": {"team_id": team["id"]}},
+        {"$lookup": {
+            "from": "activities",
+            "localField": "id",
+            "foreignField": "user_id",
+            "as": "activities"
+        }},
+        {"$lookup": {
+            "from": "sponsors",
+            "localField": "id",
+            "foreignField": "walker_id",
+            "as": "sponsors"
+        }},
+        {"$lookup": {
+            "from": "challenges",
+            "localField": "challenge_id",
+            "foreignField": "id",
+            "as": "challenge_arr"
+        }},
+        {"$project": {
+            "_id": 0,
+            "password_hash": 0,
+            "id": 1,
+            "full_name": 1,
+            "display_name": 1,
+            "email": 1,
+            "challenge_id": 1,
+            "total_km": {"$round": [{"$sum": "$activities.km"}, 2]},
+            "total_steps": {"$sum": "$activities.steps"},
+            "total_raised": {"$round": [{"$sum": "$sponsors.amount"}, 2]},
+            "challenge": {"$arrayElemAt": ["$challenge_arr", 0]}
+        }}
+    ]
     
+    members = await db.users.aggregate(member_pipeline).to_list(100)
+    
+    # Process members for progress and leader status
     total_progress_pct = 0
     for member in members:
-        activities = await db.activities.find({"user_id": member["id"]}, {"_id": 0}).to_list(10000)
-        member["total_km"] = round(sum(a.get("km", 0) for a in activities), 2)
-        member["total_steps"] = sum(a.get("steps", 0) for a in activities)
-        sponsors = await db.sponsors.find({"walker_id": member["id"]}, {"_id": 0}).to_list(10000)
-        member["total_raised"] = round(sum(s.get("amount", 0) for s in sponsors), 2)
         member["is_leader"] = member["id"] == team.get("creator_id")
         
-        # Compute member's progress percentage based on their challenge
-        member_challenge = None
-        if member.get("challenge_id"):
-            member_challenge = await db.challenges.find_one({"id": member["challenge_id"]}, {"_id": 0})
+        # Compute progress percentage
+        member_challenge = member.get("challenge")
         if member_challenge and member_challenge.get("total_distance_km", 0) > 0:
             member["progress_pct"] = min(100, round((member["total_km"] / member_challenge["total_distance_km"]) * 100, 1))
         else:
             member["progress_pct"] = 0
         total_progress_pct += member["progress_pct"]
-        member["challenge"] = member_challenge
     
     team["members"] = members
     team["total_km"] = round(sum(m["total_km"] for m in members), 2)
@@ -981,81 +1008,133 @@ async def get_fundraising_page(walker_id: str):
 
 @api_router.get("/leaderboards/distance")
 async def leaderboard_distance():
-    users = await db.users.find(
-        {"role": {"$ne": "admin"}}, {"_id": 0, "password_hash": 0}
-    ).to_list(10000)
-    result = []
-    for u in users:
-        activities = await db.activities.find({"user_id": u["id"]}, {"_id": 0}).to_list(10000)
-        total_km = round(sum(a.get("km", 0) for a in activities), 2)
-        if total_km > 0:
-            result.append({
-                "user_id": u["id"],
-                "display_name": u.get("display_name", u.get("full_name", "")),
-                "country": u.get("country", ""),
-                "total_km": total_km,
-            })
-    result.sort(key=lambda x: x["total_km"], reverse=True)
-    return result[:50]
+    """Optimized leaderboard by distance using aggregation pipeline"""
+    pipeline = [
+        {"$match": {"role": {"$ne": "admin"}}},
+        {"$lookup": {
+            "from": "activities",
+            "localField": "id",
+            "foreignField": "user_id",
+            "as": "activities"
+        }},
+        {"$addFields": {
+            "total_km": {"$round": [{"$sum": "$activities.km"}, 2]}
+        }},
+        {"$match": {"total_km": {"$gt": 0}}},
+        {"$project": {
+            "_id": 0,
+            "user_id": "$id",
+            "display_name": {"$ifNull": ["$display_name", "$full_name"]},
+            "country": {"$ifNull": ["$country", ""]},
+            "total_km": 1
+        }},
+        {"$sort": {"total_km": -1}},
+        {"$limit": 50}
+    ]
+    result = await db.users.aggregate(pipeline).to_list(50)
+    return result
 
 @api_router.get("/leaderboards/raised")
 async def leaderboard_raised():
-    users = await db.users.find(
-        {"role": {"$ne": "admin"}}, {"_id": 0, "password_hash": 0}
-    ).to_list(10000)
-    result = []
-    for u in users:
-        sponsors = await db.sponsors.find({"walker_id": u["id"]}, {"_id": 0}).to_list(10000)
-        total_raised = round(sum(s.get("amount", 0) for s in sponsors), 2)
-        if total_raised > 0:
-            result.append({
-                "user_id": u["id"],
-                "display_name": u.get("display_name", u.get("full_name", "")),
-                "country": u.get("country", ""),
-                "total_raised": total_raised,
-            })
-    result.sort(key=lambda x: x["total_raised"], reverse=True)
-    return result[:50]
+    """Optimized leaderboard by funds raised using aggregation pipeline"""
+    pipeline = [
+        {"$match": {"role": {"$ne": "admin"}}},
+        {"$lookup": {
+            "from": "sponsors",
+            "localField": "id",
+            "foreignField": "walker_id",
+            "as": "sponsors"
+        }},
+        {"$addFields": {
+            "total_raised": {"$round": [{"$sum": "$sponsors.amount"}, 2]}
+        }},
+        {"$match": {"total_raised": {"$gt": 0}}},
+        {"$project": {
+            "_id": 0,
+            "user_id": "$id",
+            "display_name": {"$ifNull": ["$display_name", "$full_name"]},
+            "country": {"$ifNull": ["$country", ""]},
+            "total_raised": 1
+        }},
+        {"$sort": {"total_raised": -1}},
+        {"$limit": 50}
+    ]
+    result = await db.users.aggregate(pipeline).to_list(50)
+    return result
 
 @api_router.get("/leaderboards/teams/distance")
 async def leaderboard_teams_distance():
-    teams = await db.teams.find({}, {"_id": 0}).to_list(100)
-    result = []
-    for team in teams:
-        members = await db.users.find({"team_id": team["id"]}, {"_id": 0}).to_list(100)
-        total_km = 0
-        for member in members:
-            activities = await db.activities.find({"user_id": member["id"]}, {"_id": 0}).to_list(10000)
-            total_km += sum(a.get("km", 0) for a in activities)
-        if total_km > 0:
-            result.append({
-                "team_id": team["id"],
-                "name": team["name"],
-                "total_km": round(total_km, 2),
-                "members_count": len(members),
-            })
-    result.sort(key=lambda x: x["total_km"], reverse=True)
-    return result[:50]
+    """Optimized team leaderboard by distance using aggregation pipeline"""
+    pipeline = [
+        {"$lookup": {
+            "from": "users",
+            "localField": "id",
+            "foreignField": "team_id",
+            "as": "members"
+        }},
+        {"$unwind": {"path": "$members", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "activities",
+            "localField": "members.id",
+            "foreignField": "user_id",
+            "as": "member_activities"
+        }},
+        {"$group": {
+            "_id": "$id",
+            "name": {"$first": "$name"},
+            "total_km": {"$sum": {"$sum": "$member_activities.km"}},
+            "members_count": {"$sum": {"$cond": [{"$ifNull": ["$members.id", False]}, 1, 0]}}
+        }},
+        {"$match": {"total_km": {"$gt": 0}}},
+        {"$project": {
+            "_id": 0,
+            "team_id": "$_id",
+            "name": 1,
+            "total_km": {"$round": ["$total_km", 2]},
+            "members_count": 1
+        }},
+        {"$sort": {"total_km": -1}},
+        {"$limit": 50}
+    ]
+    result = await db.teams.aggregate(pipeline).to_list(50)
+    return result
 
 @api_router.get("/leaderboards/teams/raised")
 async def leaderboard_teams_raised():
-    teams = await db.teams.find({}, {"_id": 0}).to_list(100)
-    result = []
-    for team in teams:
-        members = await db.users.find({"team_id": team["id"]}, {"_id": 0}).to_list(100)
-        total_raised = 0
-        for member in members:
-            sponsors = await db.sponsors.find({"walker_id": member["id"]}, {"_id": 0}).to_list(10000)
-            total_raised += sum(s.get("amount", 0) for s in sponsors)
-        if total_raised > 0:
-            result.append({
-                "team_id": team["id"],
-                "name": team["name"],
-                "total_raised": round(total_raised, 2),
-                "members_count": len(members),
-            })
-    result.sort(key=lambda x: x["total_raised"], reverse=True)
-    return result[:50]
+    """Optimized team leaderboard by funds raised using aggregation pipeline"""
+    pipeline = [
+        {"$lookup": {
+            "from": "users",
+            "localField": "id",
+            "foreignField": "team_id",
+            "as": "members"
+        }},
+        {"$unwind": {"path": "$members", "preserveNullAndEmptyArrays": True}},
+        {"$lookup": {
+            "from": "sponsors",
+            "localField": "members.id",
+            "foreignField": "walker_id",
+            "as": "member_sponsors"
+        }},
+        {"$group": {
+            "_id": "$id",
+            "name": {"$first": "$name"},
+            "total_raised": {"$sum": {"$sum": "$member_sponsors.amount"}},
+            "members_count": {"$sum": {"$cond": [{"$ifNull": ["$members.id", False]}, 1, 0]}}
+        }},
+        {"$match": {"total_raised": {"$gt": 0}}},
+        {"$project": {
+            "_id": 0,
+            "team_id": "$_id",
+            "name": 1,
+            "total_raised": {"$round": ["$total_raised", 2]},
+            "members_count": 1
+        }},
+        {"$sort": {"total_raised": -1}},
+        {"$limit": 50}
+    ]
+    result = await db.teams.aggregate(pipeline).to_list(50)
+    return result
 
 
 # ==========================================
@@ -1064,14 +1143,33 @@ async def leaderboard_teams_raised():
 
 @api_router.get("/admin/stats")
 async def admin_stats(user=Depends(get_admin_user)):
+    """Optimized admin stats using aggregation pipelines instead of loading all records"""
     total_users = await db.users.count_documents({"role": {"$ne": "admin"}})
     total_teams = await db.teams.count_documents({})
-    activities = await db.activities.find({}, {"_id": 0}).to_list(100000)
-    total_distance = round(sum(a.get("km", 0) for a in activities), 2)
-    total_steps = sum(a.get("steps", 0) for a in activities)
-    sponsors = await db.sponsors.find({}, {"_id": 0}).to_list(100000)
-    total_pledged = round(sum(s.get("amount", 0) for s in sponsors), 2)
     total_corporate = await db.corporate_sponsors.count_documents({})
+    
+    # Aggregate total distance and steps
+    activity_stats = await db.activities.aggregate([
+        {"$group": {
+            "_id": None,
+            "total_km": {"$sum": "$km"},
+            "total_steps": {"$sum": "$steps"}
+        }}
+    ]).to_list(1)
+    
+    total_distance = round(activity_stats[0]["total_km"], 2) if activity_stats else 0
+    total_steps = activity_stats[0]["total_steps"] if activity_stats else 0
+    
+    # Aggregate total pledged
+    sponsor_stats = await db.sponsors.aggregate([
+        {"$group": {
+            "_id": None,
+            "total_amount": {"$sum": "$amount"}
+        }}
+    ]).to_list(1)
+    
+    total_pledged = round(sponsor_stats[0]["total_amount"], 2) if sponsor_stats else 0
+    
     return {
         "total_users": total_users,
         "total_teams": total_teams,
