@@ -602,12 +602,30 @@ async def update_my_team(req: TeamUpdate, user=Depends(get_current_user)):
 
 @api_router.get("/teams/search")
 async def search_teams(q: str = ""):
-    query = {}
+    """Optimized team search using aggregation pipeline"""
+    match_stage = {}
     if q:
-        query = {"name": {"$regex": q, "$options": "i"}}
-    teams = await db.teams.find(query, {"_id": 0}).to_list(20)
-    for team in teams:
-        team["members_count"] = await db.users.count_documents({"team_id": team["id"]})
+        match_stage = {"name": {"$regex": q, "$options": "i"}}
+    
+    pipeline = [
+        {"$match": match_stage},
+        {"$limit": 20},
+        {"$lookup": {
+            "from": "users",
+            "localField": "id",
+            "foreignField": "team_id",
+            "as": "members"
+        }},
+        {"$addFields": {
+            "members_count": {"$size": "$members"}
+        }},
+        {"$project": {
+            "_id": 0,
+            "members": 0
+        }}
+    ]
+    
+    teams = await db.teams.aggregate(pipeline).to_list(20)
     return teams
 
 @api_router.get("/teams/my")
@@ -851,43 +869,88 @@ async def supporter_login_and_pledge(
 
 @api_router.get("/supporters/dashboard")
 async def supporter_dashboard(user=Depends(get_current_user)):
-    pledges = await db.pledges.find(
-        {"supporter_user_id": user["id"]}, {"_id": 0}
-    ).sort("created_at", -1).to_list(1000)
-
-    result = []
+    """Optimized supporter dashboard using aggregation pipeline"""
+    pipeline = [
+        {"$match": {"supporter_user_id": user["id"]}},
+        {"$sort": {"created_at": -1}},
+        {"$limit": 1000},
+        {"$lookup": {
+            "from": "users",
+            "localField": "walker_id",
+            "foreignField": "id",
+            "as": "walker_arr"
+        }},
+        {"$lookup": {
+            "from": "challenges",
+            "localField": "challenge_id",
+            "foreignField": "id",
+            "as": "challenge_arr"
+        }},
+        {"$lookup": {
+            "from": "activities",
+            "localField": "walker_id",
+            "foreignField": "user_id",
+            "as": "activities"
+        }},
+        {"$addFields": {
+            "walker": {"$arrayElemAt": ["$walker_arr", 0]},
+            "challenge": {"$arrayElemAt": ["$challenge_arr", 0]},
+            "walker_total_km": {"$round": [{"$sum": "$activities.km"}, 2]}
+        }},
+        {"$project": {
+            "_id": 0,
+            "walker_arr": 0,
+            "challenge_arr": 0,
+            "activities": 0,
+            "walker._id": 0,
+            "walker.password_hash": 0,
+            "challenge._id": 0
+        }}
+    ]
+    
+    pledges = await db.pledges.aggregate(pipeline).to_list(1000)
+    
+    # Calculate progress and amounts
     for p in pledges:
-        walker = await db.users.find_one({"id": p["walker_id"]}, {"_id": 0, "password_hash": 0})
-        challenge = None
-        if p.get("challenge_id"):
-            challenge = await db.challenges.find_one({"id": p["challenge_id"]}, {"_id": 0})
-        activities = await db.activities.find({"user_id": p["walker_id"]}, {"_id": 0}).to_list(10000)
-        total_km = round(sum(a.get("km", 0) for a in activities), 2)
+        challenge = p.get("challenge")
+        total_km = p.get("walker_total_km", 0)
         progress_pct = 0
         if challenge and challenge.get("total_distance_km", 0) > 0:
             progress_pct = min(100, round((total_km / challenge["total_distance_km"]) * 100, 1))
+        p["walker_progress_pct"] = progress_pct
+        
         calculated = p.get("calculated_amount", 0)
-        if p["pledge_type"] == "per_km" and p.get("pledge_per_km"):
+        if p.get("pledge_type") == "per_km" and p.get("pledge_per_km"):
             calculated = round(p["pledge_per_km"] * total_km, 2)
-        result.append({
-            **p,
-            "walker": walker,
-            "challenge": challenge,
-            "walker_total_km": total_km,
-            "walker_progress_pct": progress_pct,
-            "calculated_amount": calculated,
-        })
-    return result
+        p["calculated_amount"] = calculated
+    
+    return pledges
 
 @api_router.get("/pledges/{walker_id}")
 async def list_pledges_for_walker(walker_id: str):
-    pledges = await db.pledges.find(
-        {"walker_id": walker_id}, {"_id": 0}
-    ).sort("created_at", -1).to_list(1000)
-    for p in pledges:
-        if p.get("supporter_user_id"):
-            supporter = await db.users.find_one({"id": p["supporter_user_id"]}, {"_id": 0, "password_hash": 0})
-            p["supporter"] = supporter
+    """Optimized pledge list using aggregation pipeline"""
+    pipeline = [
+        {"$match": {"walker_id": walker_id}},
+        {"$sort": {"created_at": -1}},
+        {"$limit": 1000},
+        {"$lookup": {
+            "from": "users",
+            "localField": "supporter_user_id",
+            "foreignField": "id",
+            "as": "supporter_arr"
+        }},
+        {"$addFields": {
+            "supporter": {"$arrayElemAt": ["$supporter_arr", 0]}
+        }},
+        {"$project": {
+            "_id": 0,
+            "supporter_arr": 0,
+            "supporter._id": 0,
+            "supporter.password_hash": 0
+        }}
+    ]
+    
+    pledges = await db.pledges.aggregate(pipeline).to_list(1000)
     return pledges
 
 
