@@ -65,6 +65,9 @@ class ChallengeCreate(BaseModel):
     total_distance_km: float
     milestones: List[dict] = []
     image_url: Optional[str] = ""
+    route_map_url: Optional[str] = None
+    route_map_markers_url: Optional[str] = None
+    is_active: Optional[bool] = True
 
 class ChallengeUpdate(BaseModel):
     name: Optional[str] = None
@@ -72,7 +75,9 @@ class ChallengeUpdate(BaseModel):
     total_distance_km: Optional[float] = None
     milestones: Optional[List[dict]] = None
     image_url: Optional[str] = None
-    active: Optional[bool] = None
+    route_map_url: Optional[str] = None
+    route_map_markers_url: Optional[str] = None
+    is_active: Optional[bool] = None
 
 class WalkerTypeCreate(BaseModel):
     name: str
@@ -145,6 +150,14 @@ class CorporateSponsorUpdate(BaseModel):
     level_id: Optional[str] = None
     website_url: Optional[str] = None
     logo_url: Optional[str] = None
+
+class SponsorInquiry(BaseModel):
+    company_name: str
+    contact_name: str
+    email: str
+    phone: Optional[str] = ""
+    interested_level: Optional[str] = ""
+    message: Optional[str] = ""
 
 class PledgeCreate(BaseModel):
     pledge_type: str  # "per_km" or "total"
@@ -263,7 +276,7 @@ async def update_profile(req: ProfileUpdate, user=Depends(get_current_user)):
 
 @api_router.get("/challenges")
 async def list_challenges():
-    challenges = await db.challenges.find({"active": True}, {"_id": 0}).to_list(100)
+    challenges = await db.challenges.find({"is_active": {"$ne": False}}, {"_id": 0}).to_list(100)
     return challenges
 
 @api_router.get("/challenges/all")
@@ -280,6 +293,15 @@ async def get_challenge(challenge_id: str):
 
 @api_router.post("/challenges")
 async def create_challenge(req: ChallengeCreate, user=Depends(get_admin_user)):
+    # Check for unique name
+    existing = await db.challenges.find_one({"name": req.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Challenge name must be unique")
+    # Validate description length
+    if len(req.description) < 50:
+        raise HTTPException(status_code=400, detail="Description must be at least 50 characters")
+    if len(req.description) > 2000:
+        raise HTTPException(status_code=400, detail="Description must be at most 2000 characters")
     challenge = {
         "id": str(uuid.uuid4()),
         "name": req.name,
@@ -287,7 +309,9 @@ async def create_challenge(req: ChallengeCreate, user=Depends(get_admin_user)):
         "total_distance_km": req.total_distance_km,
         "milestones": req.milestones,
         "image_url": req.image_url or "",
-        "active": True,
+        "route_map_url": req.route_map_url,
+        "route_map_markers_url": req.route_map_markers_url,
+        "is_active": req.is_active if req.is_active is not None else True,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.challenges.insert_one(challenge)
@@ -296,6 +320,17 @@ async def create_challenge(req: ChallengeCreate, user=Depends(get_admin_user)):
 
 @api_router.put("/challenges/{challenge_id}")
 async def update_challenge(challenge_id: str, req: ChallengeUpdate, user=Depends(get_admin_user)):
+    # Check for unique name if updating name
+    if req.name:
+        existing = await db.challenges.find_one({"name": req.name, "id": {"$ne": challenge_id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Challenge name must be unique")
+    # Validate description length if updating
+    if req.description is not None:
+        if len(req.description) < 50:
+            raise HTTPException(status_code=400, detail="Description must be at least 50 characters")
+        if len(req.description) > 2000:
+            raise HTTPException(status_code=400, detail="Description must be at most 2000 characters")
     updates = {k: v for k, v in req.model_dump().items() if v is not None}
     if updates:
         await db.challenges.update_one({"id": challenge_id}, {"$set": updates})
@@ -310,6 +345,80 @@ async def delete_challenge(challenge_id: str, user=Depends(get_admin_user)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Challenge not found")
     return {"message": "Challenge deleted"}
+
+@api_router.post("/challenges/{challenge_id}/route-map")
+async def upload_challenge_route_map(challenge_id: str, file: UploadFile = File(...), user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PNG, JPEG, WebP")
+    
+    ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+    filename = f"challenge_{challenge_id}_route_map.{ext}"
+    file_path = UPLOADS_DIR / filename
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    route_map_url = f"/api/uploads/{filename}"
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"route_map_url": route_map_url}})
+    return {"route_map_url": route_map_url}
+
+@api_router.post("/challenges/{challenge_id}/route-map-markers")
+async def upload_challenge_route_map_markers(challenge_id: str, file: UploadFile = File(...), user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PNG, JPEG, WebP")
+    
+    ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+    filename = f"challenge_{challenge_id}_route_markers.{ext}"
+    file_path = UPLOADS_DIR / filename
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    route_map_markers_url = f"/api/uploads/{filename}"
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"route_map_markers_url": route_map_markers_url}})
+    return {"route_map_markers_url": route_map_markers_url}
+
+@api_router.post("/challenges/{challenge_id}/milestones/{milestone_index}/image")
+async def upload_milestone_image(challenge_id: str, milestone_index: int, file: UploadFile = File(...), user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    
+    milestones = challenge.get("milestones", [])
+    if milestone_index < 0 or milestone_index >= len(milestones):
+        raise HTTPException(status_code=400, detail="Invalid milestone index")
+    
+    allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Allowed: PNG, JPEG, WebP")
+    
+    ext = file.filename.split(".")[-1] if "." in file.filename else "png"
+    img_id = str(uuid.uuid4())[:8]
+    filename = f"milestone_{challenge_id}_{milestone_index}_{img_id}.{ext}"
+    file_path = UPLOADS_DIR / filename
+    
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    image_url = f"/api/uploads/{filename}"
+    
+    # Add image to milestone's images array
+    if "images" not in milestones[milestone_index]:
+        milestones[milestone_index]["images"] = []
+    milestones[milestone_index]["images"].append(image_url)
+    
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"milestones": milestones}})
+    return {"image_url": image_url, "milestones": milestones}
 
 
 # ==========================================
@@ -1450,6 +1559,44 @@ async def delete_sponsor_logo(sponsor_id: str, user=Depends(get_current_user)):
             logo_path.unlink()
     await db.corporate_sponsors.update_one({"id": sponsor_id}, {"$set": {"logo_url": None}})
     return {"message": "Logo deleted"}
+
+
+# ==========================================
+# Sponsor Inquiry (Become a Sponsor Form)
+# ==========================================
+
+@api_router.post("/sponsor-inquiries")
+async def create_sponsor_inquiry(data: SponsorInquiry):
+    inquiry = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump(),
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.sponsor_inquiries.insert_one(inquiry)
+    del inquiry["_id"]
+    return inquiry
+
+@api_router.get("/sponsor-inquiries")
+async def list_sponsor_inquiries(user=Depends(get_admin_user)):
+    inquiries = await db.sponsor_inquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return inquiries
+
+@api_router.put("/sponsor-inquiries/{inquiry_id}/status")
+async def update_inquiry_status(inquiry_id: str, status: str, user=Depends(get_admin_user)):
+    if status not in ["new", "contacted", "confirmed", "declined"]:
+        raise HTTPException(status_code=400, detail="Invalid status")
+    result = await db.sponsor_inquiries.update_one({"id": inquiry_id}, {"$set": {"status": status}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    return {"message": "Status updated"}
+
+@api_router.delete("/sponsor-inquiries/{inquiry_id}")
+async def delete_sponsor_inquiry(inquiry_id: str, user=Depends(get_admin_user)):
+    result = await db.sponsor_inquiries.delete_one({"id": inquiry_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    return {"message": "Deleted"}
 
 
 # ==========================================

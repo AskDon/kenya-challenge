@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Badge } from '../components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Switch } from '../components/ui/switch';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image } from 'lucide-react';
+import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image, Mail, Phone, CheckCircle, Clock, XCircle } from 'lucide-react';
 
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
@@ -20,20 +21,22 @@ export default function AdminPage() {
   const [users, setUsers] = useState([]);
   const [corpSponsors, setCorpSponsors] = useState([]);
   const [sponsorshipLevels, setSponsorshipLevels] = useState([]);
+  const [sponsorInquiries, setSponsorInquiries] = useState([]);
   const [config, setConfig] = useState({});
   const [loading, setLoading] = useState(true);
 
   const loadAll = () => {
     Promise.all([
       api.get('/admin/stats'),
-      api.get('/challenges'),
+      api.get('/challenges/all'),
       api.get('/walker-types'),
       api.get('/achievement-levels'),
       api.get('/admin/users'),
       api.get('/admin/config'),
       api.get('/corporate-sponsors').catch(() => ({ data: [] })),
       api.get('/sponsorship-levels').catch(() => ({ data: [] })),
-    ]).then(([s, c, wt, al, u, cfg, cs, sl]) => {
+      api.get('/sponsor-inquiries').catch(() => ({ data: [] })),
+    ]).then(([s, c, wt, al, u, cfg, cs, sl, si]) => {
       setStats(s.data);
       setChallenges(c.data);
       setWalkerTypes(wt.data);
@@ -42,6 +45,7 @@ export default function AdminPage() {
       setConfig(cfg.data);
       setCorpSponsors(cs.data);
       setSponsorshipLevels(sl.data);
+      setSponsorInquiries(si.data);
     }).catch(() => toast.error('Failed to load admin data'))
       .finally(() => setLoading(false));
   };
@@ -66,6 +70,7 @@ export default function AdminPage() {
           <TabsTrigger value="achievements" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-achievements"><Award className="w-3 h-3 mr-1" /> Achievements</TabsTrigger>
           <TabsTrigger value="users" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-users"><Users className="w-3 h-3 mr-1" /> Users</TabsTrigger>
           <TabsTrigger value="corporate" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-corporate"><Building2 className="w-3 h-3 mr-1" /> Corporate</TabsTrigger>
+          <TabsTrigger value="inquiries" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-inquiries"><Mail className="w-3 h-3 mr-1" /> Inquiries {sponsorInquiries.filter(i => i.status === 'new').length > 0 && <Badge className="ml-1 bg-orange-600 text-white text-[10px] px-1.5 py-0 rounded-full">{sponsorInquiries.filter(i => i.status === 'new').length}</Badge>}</TabsTrigger>
           <TabsTrigger value="config" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-config"><Settings className="w-3 h-3 mr-1" /> Config</TabsTrigger>
         </TabsList>
 
@@ -138,6 +143,11 @@ export default function AdminPage() {
           />
         </TabsContent>
 
+        {/* Inquiries */}
+        <TabsContent value="inquiries">
+          <SponsorInquiriesAdmin inquiries={sponsorInquiries} onRefresh={loadAll} />
+        </TabsContent>
+
         {/* Config */}
         <TabsContent value="config">
           <ConfigAdmin config={config} onRefresh={loadAll} />
@@ -148,21 +158,27 @@ export default function AdminPage() {
 }
 
 function ChallengesAdmin({ challenges, onRefresh }) {
-  const [form, setForm] = useState({ name: '', description: '', total_distance_km: '', milestones: [] });
+  const [form, setForm] = useState({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true });
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const [milestoneStr, setMilestoneStr] = useState('');
 
   const openCreate = () => {
-    setForm({ name: '', description: '', total_distance_km: '', milestones: [] });
+    setForm({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true });
     setMilestoneStr('');
     setEditing(null);
     setOpen(true);
   };
 
   const openEdit = (ch) => {
-    setForm({ name: ch.name, description: ch.description, total_distance_km: String(ch.total_distance_km), milestones: ch.milestones || [] });
-    setMilestoneStr(ch.milestones?.map(m => `${m.distance_km}:${m.title}:${m.description}`).join('\n') || '');
+    setForm({ 
+      name: ch.name, 
+      description: ch.description, 
+      total_distance_km: String(ch.total_distance_km), 
+      milestones: ch.milestones || [],
+      is_active: ch.is_active !== false
+    });
+    setMilestoneStr(ch.milestones?.map(m => `${m.distance_km}:${m.title}:${m.description || ''}`).join('\n') || '');
     setEditing(ch.id);
     setOpen(true);
   };
@@ -170,16 +186,25 @@ function ChallengesAdmin({ challenges, onRefresh }) {
   const parseMilestones = (str) => {
     return str.split('\n').filter(l => l.trim()).map(l => {
       const parts = l.split(':');
-      return { distance_km: parseFloat(parts[0]) || 0, title: parts[1]?.trim() || '', description: parts[2]?.trim() || '' };
+      return { distance_km: parseFloat(parts[0]) || 0, title: parts[1]?.trim() || '', description: parts.slice(2).join(':').trim() || '' };
     });
   };
 
   const handleSave = async () => {
+    if (form.description.length < 50) {
+      toast.error('Description must be at least 50 characters');
+      return;
+    }
+    if (form.description.length > 2000) {
+      toast.error('Description must be at most 2000 characters');
+      return;
+    }
     const payload = {
       name: form.name,
       description: form.description,
       total_distance_km: parseFloat(form.total_distance_km),
       milestones: parseMilestones(milestoneStr),
+      is_active: form.is_active,
     };
     try {
       if (editing) {
@@ -196,6 +221,14 @@ function ChallengesAdmin({ challenges, onRefresh }) {
     }
   };
 
+  const handleToggleActive = async (ch) => {
+    try {
+      await api.put(`/challenges/${ch.id}`, { is_active: !ch.is_active });
+      toast.success(ch.is_active ? 'Challenge deactivated' : 'Challenge activated');
+      onRefresh();
+    } catch { toast.error('Failed to update'); }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this challenge?')) return;
     try {
@@ -205,29 +238,35 @@ function ChallengesAdmin({ challenges, onRefresh }) {
     } catch { toast.error('Failed to delete'); }
   };
 
+  const activeCount = challenges.filter(c => c.is_active !== false).length;
+
   return (
     <Card className="bg-white rounded-2xl border border-stone-100">
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-stone-900">Challenges ({challenges.length})</h3>
+          <div>
+            <h3 className="text-lg font-bold text-stone-900">Challenges ({challenges.length})</h3>
+            <p className="text-xs text-stone-400">{activeCount} active, {challenges.length - activeCount} inactive</p>
+          </div>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={openCreate} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-add-challenge-btn">
                 <Plus className="w-4 h-4 mr-1" /> Add
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editing ? 'Edit Challenge' : 'New Challenge'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label className="text-sm">Name</Label>
-                  <Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-challenge-name" />
+                  <Label className="text-sm">Name (unique)</Label>
+                  <Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} placeholder="e.g., Nairobi to Naivasha" className="mt-1 rounded-xl" data-testid="admin-challenge-name" />
                 </div>
                 <div>
-                  <Label className="text-sm">Description</Label>
-                  <Textarea value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-challenge-desc" />
+                  <Label className="text-sm">Description (50-2000 characters)</Label>
+                  <Textarea value={form.description} onChange={e => setForm(f => ({...f, description: e.target.value}))} placeholder="Describe the journey, what walkers will experience..." rows={4} className="mt-1 rounded-xl" data-testid="admin-challenge-desc" />
+                  <p className="text-[10px] text-stone-400 mt-1">{form.description.length}/2000 characters</p>
                 </div>
                 <div>
                   <Label className="text-sm">Total Distance (km)</Label>
@@ -235,7 +274,15 @@ function ChallengesAdmin({ challenges, onRefresh }) {
                 </div>
                 <div>
                   <Label className="text-sm">Milestones (one per line: distance:title:description)</Label>
-                  <Textarea value={milestoneStr} onChange={e => setMilestoneStr(e.target.value)} placeholder="10:Checkpoint 1:First milestone" rows={4} className="mt-1 rounded-xl font-mono text-xs" data-testid="admin-challenge-milestones" />
+                  <Textarea value={milestoneStr} onChange={e => setMilestoneStr(e.target.value)} placeholder="10:Checkpoint 1:A scenic viewpoint with acacia trees\n25:Rest Stop:Local village with fresh water" rows={5} className="mt-1 rounded-xl font-mono text-xs" data-testid="admin-challenge-milestones" />
+                  <p className="text-[10px] text-stone-400 mt-1">Format: distance_km:title:what walker sees/smells/hears</p>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50">
+                  <div>
+                    <p className="text-sm font-medium text-stone-900">Active</p>
+                    <p className="text-xs text-stone-400">Show this challenge to walkers</p>
+                  </div>
+                  <Switch checked={form.is_active} onCheckedChange={(v) => setForm(f => ({...f, is_active: v}))} data-testid="admin-challenge-active" />
                 </div>
                 <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-challenge-save-btn">
                   {editing ? 'Update' : 'Create'} Challenge
@@ -246,10 +293,20 @@ function ChallengesAdmin({ challenges, onRefresh }) {
         </div>
         <div className="space-y-2">
           {challenges.map(ch => (
-            <div key={ch.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-challenge-${ch.id}`}>
-              <div>
-                <p className="text-sm font-medium text-stone-900">{ch.name}</p>
-                <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones</p>
+            <div key={ch.id} className={`flex items-center justify-between p-3 rounded-xl ${ch.is_active !== false ? 'bg-stone-50' : 'bg-stone-100 opacity-60'}`} data-testid={`admin-challenge-${ch.id}`}>
+              <div className="flex items-center gap-3">
+                <Switch 
+                  checked={ch.is_active !== false} 
+                  onCheckedChange={() => handleToggleActive(ch)}
+                  data-testid={`toggle-challenge-${ch.id}`}
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-stone-900">{ch.name}</p>
+                    {ch.is_active === false && <Badge className="bg-stone-200 text-stone-500 text-[10px] rounded-full">Inactive</Badge>}
+                  </div>
+                  <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones</p>
+                </div>
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" onClick={() => openEdit(ch)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
@@ -688,5 +745,106 @@ function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function SponsorInquiriesAdmin({ inquiries, onRefresh }) {
+  const statusColors = {
+    new: 'bg-orange-100 text-orange-700',
+    contacted: 'bg-blue-100 text-blue-700',
+    confirmed: 'bg-emerald-100 text-emerald-700',
+    declined: 'bg-stone-100 text-stone-500',
+  };
+
+  const statusIcons = {
+    new: Clock,
+    contacted: Mail,
+    confirmed: CheckCircle,
+    declined: XCircle,
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await api.put(`/sponsor-inquiries/${id}/status?status=${status}`);
+      toast.success('Status updated');
+      onRefresh();
+    } catch { toast.error('Failed to update status'); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this inquiry?')) return;
+    try {
+      await api.delete(`/sponsor-inquiries/${id}`);
+      toast.success('Deleted');
+      onRefresh();
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  return (
+    <Card className="bg-white rounded-2xl border border-stone-100">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-bold text-stone-900">Sponsor Inquiries ({inquiries.length})</h3>
+            <p className="text-xs text-stone-400 mt-0.5">Organizations interested in becoming sponsors</p>
+          </div>
+        </div>
+
+        {inquiries.length === 0 ? (
+          <p className="text-stone-400 text-center py-8">No sponsor inquiries yet. They will appear here when submitted via the landing page.</p>
+        ) : (
+          <div className="space-y-3">
+            {inquiries.map(inq => {
+              const StatusIcon = statusIcons[inq.status] || Clock;
+              return (
+                <div key={inq.id} className="p-4 rounded-xl bg-stone-50" data-testid={`inquiry-${inq.id}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-bold text-stone-900">{inq.company_name}</p>
+                        <Badge className={`rounded-full text-xs ${statusColors[inq.status] || statusColors.new}`}>
+                          <StatusIcon className="w-3 h-3 mr-1" />
+                          {inq.status}
+                        </Badge>
+                        {inq.interested_level && (
+                          <Badge variant="outline" className="rounded-full text-xs border-stone-200">{inq.interested_level}</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-stone-600">{inq.contact_name}</p>
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-stone-500">
+                        <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {inq.email}</span>
+                        {inq.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {inq.phone}</span>}
+                      </div>
+                      {inq.message && (
+                        <p className="text-sm text-stone-600 mt-2 p-2 rounded bg-white border border-stone-100">{inq.message}</p>
+                      )}
+                      <p className="text-[10px] text-stone-400 mt-2">
+                        Submitted: {new Date(inq.created_at).toLocaleDateString()} at {new Date(inq.created_at).toLocaleTimeString()}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Select value={inq.status} onValueChange={(v) => handleUpdateStatus(inq.id, v)}>
+                        <SelectTrigger className="w-28 h-8 text-xs rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="new">New</SelectItem>
+                          <SelectItem value="contacted">Contacted</SelectItem>
+                          <SelectItem value="confirmed">Confirmed</SelectItem>
+                          <SelectItem value="declined">Declined</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(inq.id)} className="text-red-500 hover:text-red-600 h-8">
+                        <Trash2 className="w-3 h-3 mr-1" /> Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
