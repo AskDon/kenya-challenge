@@ -74,10 +74,10 @@ export default function FundraisingPage() {
       <div className="bg-stone-900 py-12 md:py-16">
         <div className="container-app text-center">
           <div className="w-16 h-16 rounded-full bg-orange-600 flex items-center justify-center mx-auto mb-4">
-            <span className="text-2xl font-bold text-white">{walker.display_name?.[0] || walker.first_name?.[0]}</span>
+            <span className="text-2xl font-bold text-white">{walker.display_name?.[0] || walker.full_name?.[0]}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-            {walker.display_name || walker.first_name}
+            {walker.display_name || walker.full_name}
           </h1>
           <p className="text-stone-400 text-sm">is walking for Kenya Education Fund</p>
           {team && (
@@ -209,7 +209,7 @@ export default function FundraisingPage() {
           <div>
             <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_4px_20px_-2px_rgba(87,83,78,0.1)] sticky top-24">
               <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-stone-900 mb-1">Sponsor {walker.display_name || walker.first_name}</h3>
+                <h3 className="text-lg font-bold text-stone-900 mb-1">Sponsor {walker.display_name || walker.full_name}</h3>
                 <p className="text-sm text-stone-500 mb-4">Your donation supports Kenyan students' education.</p>
                 <form onSubmit={handleDonate} className="space-y-4">
                   <div>

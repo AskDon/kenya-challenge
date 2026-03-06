@@ -42,7 +42,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-stone-900">
-          Habari, {user?.display_name || user?.first_name}!
+          Habari, {user?.display_name || user?.full_name}!
         </h1>
         <p className="text-stone-500 mt-1">
           {hasChallenge ? 'Your journey continues. Keep walking!' : 'Choose a challenge to start your journey.'}

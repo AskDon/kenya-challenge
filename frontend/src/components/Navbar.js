@@ -82,7 +82,7 @@ export default function Navbar() {
                   <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
                     <User className="w-4 h-4 text-orange-700" />
                   </div>
-                  <span className="hidden sm:inline text-sm font-medium">{user.display_name || user.first_name}</span>
+                  <span className="hidden sm:inline text-sm font-medium">{user.display_name || user.full_name}</span>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">

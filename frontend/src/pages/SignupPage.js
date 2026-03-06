@@ -5,17 +5,14 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { ArrowRight } from 'lucide-react';
-
-const COUNTRIES = [
-  'US', 'UK', 'KE', 'CA', 'AU', 'DE', 'FR', 'IN', 'NG', 'ZA', 'Other'
-];
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function SignupPage() {
-  const [form, setForm] = useState({ first_name: '', email: '', password: '', display_name: '', country: 'US' });
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm_password: '', display_name: '' });
+  const [showPw, setShowPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -28,15 +25,24 @@ export default function SignupPage() {
       toast.error('Password must be at least 6 characters');
       return;
     }
+    if (form.password !== form.confirm_password) {
+      toast.error('Passwords do not match');
+      return;
+    }
     setLoading(true);
     try {
-      const res = await api.post('/auth/signup', form);
+      const res = await api.post('/auth/signup', {
+        full_name: form.full_name,
+        email: form.email,
+        password: form.password,
+        display_name: form.display_name || undefined,
+      });
       await login(res.data.token);
       toast.success('Welcome to The Kenya Challenge!');
       if (joinCode) {
         navigate(`/teams/join/${joinCode}`);
       } else {
-        navigate('/challenges');
+        navigate('/onboarding');
       }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Signup failed');
@@ -64,18 +70,18 @@ export default function SignupPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label className="text-stone-700 text-sm font-medium">First Name</Label>
+              <Label className="text-stone-700 text-sm font-medium">Full Name</Label>
               <Input
-                value={form.first_name}
-                onChange={(e) => update('first_name', e.target.value)}
-                placeholder="Your first name"
+                value={form.full_name}
+                onChange={(e) => update('full_name', e.target.value)}
+                placeholder="Your full name"
                 required
                 className="mt-1 rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 h-12"
                 data-testid="signup-name-input"
               />
             </div>
             <div>
-              <Label className="text-stone-700 text-sm font-medium">Display Name (optional)</Label>
+              <Label className="text-stone-700 text-sm font-medium">Display Name <span className="text-stone-400 font-normal">(optional)</span></Label>
               <Input
                 value={form.display_name}
                 onChange={(e) => update('display_name', e.target.value)}
@@ -98,28 +104,47 @@ export default function SignupPage() {
             </div>
             <div>
               <Label className="text-stone-700 text-sm font-medium">Password</Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => update('password', e.target.value)}
-                placeholder="At least 6 characters"
-                required
-                className="mt-1 rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 h-12"
-                data-testid="signup-password-input"
-              />
+              <div className="relative mt-1">
+                <Input
+                  type={showPw ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => update('password', e.target.value)}
+                  placeholder="At least 6 characters"
+                  required
+                  className="rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 h-12 pr-11"
+                  data-testid="signup-password-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  data-testid="signup-toggle-password"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <div>
-              <Label className="text-stone-700 text-sm font-medium">Country</Label>
-              <Select value={form.country} onValueChange={(v) => update('country', v)}>
-                <SelectTrigger className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-12" data-testid="signup-country-select">
-                  <SelectValue placeholder="Select country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map(c => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-stone-700 text-sm font-medium">Confirm Password</Label>
+              <div className="relative mt-1">
+                <Input
+                  type={showConfirmPw ? 'text' : 'password'}
+                  value={form.confirm_password}
+                  onChange={(e) => update('confirm_password', e.target.value)}
+                  placeholder="Re-enter your password"
+                  required
+                  className="rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 h-12 pr-11"
+                  data-testid="signup-confirm-password-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(!showConfirmPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  data-testid="signup-toggle-confirm-password"
+                >
+                  {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <Button
               type="submit"
@@ -127,7 +152,7 @@ export default function SignupPage() {
               className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-6 h-auto text-base transition-all hover:scale-[1.02]"
               data-testid="signup-submit-btn"
             >
-              {loading ? 'Creating account...' : 'Start Walking'}
+              {loading ? 'Creating account...' : 'Continue'}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </form>

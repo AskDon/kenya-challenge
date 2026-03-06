@@ -176,10 +176,10 @@ export default function TeamPage() {
                   <div key={member.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`team-member-${member.id}`}>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
-                        <span className="text-sm font-bold text-orange-700">{member.display_name?.[0] || member.first_name?.[0]}</span>
+                        <span className="text-sm font-bold text-orange-700">{member.display_name?.[0] || member.full_name?.[0]}</span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-stone-900">{member.display_name || member.first_name}</p>
+                        <p className="text-sm font-medium text-stone-900">{member.display_name || member.full_name}</p>
                         <p className="text-xs text-stone-400">{member.country}</p>
                       </div>
                     </div>

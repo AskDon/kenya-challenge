@@ -44,18 +44,16 @@ logger = logging.getLogger(__name__)
 class SignupRequest(BaseModel):
     email: str
     password: str
-    first_name: str
+    full_name: str
     display_name: Optional[str] = None
-    country: Optional[str] = "US"
 
 class LoginRequest(BaseModel):
     email: str
     password: str
 
 class ProfileUpdate(BaseModel):
-    first_name: Optional[str] = None
+    full_name: Optional[str] = None
     display_name: Optional[str] = None
-    country: Optional[str] = None
 
 class ChallengeCreate(BaseModel):
     name: str
@@ -106,6 +104,16 @@ class ActivityCreate(BaseModel):
 class TeamCreate(BaseModel):
     name: str
     description: Optional[str] = ""
+    tagline: Optional[str] = ""
+
+class TeamUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    tagline: Optional[str] = None
+
+class SupporterInvite(BaseModel):
+    name: str
+    email: str
 
 class SponsorCreate(BaseModel):
     name: str
@@ -181,9 +189,8 @@ async def signup(req: SignupRequest):
         "id": str(uuid.uuid4()),
         "email": req.email.lower(),
         "password_hash": hash_password(req.password),
-        "first_name": req.first_name,
-        "display_name": req.display_name or req.first_name,
-        "country": req.country or "US",
+        "full_name": req.full_name,
+        "display_name": req.display_name or req.full_name,
         "role": "walker",
         "challenge_id": None,
         "walker_type_id": None,
@@ -428,6 +435,7 @@ async def create_team(req: TeamCreate, user=Depends(get_current_user)):
         "id": str(uuid.uuid4()),
         "name": req.name,
         "description": req.description,
+        "tagline": req.tagline or "",
         "invite_code": invite_code,
         "creator_id": user["id"],
         "challenge_id": user.get("challenge_id"),
@@ -437,6 +445,29 @@ async def create_team(req: TeamCreate, user=Depends(get_current_user)):
     await db.users.update_one({"id": user["id"]}, {"$set": {"team_id": team["id"]}})
     resp = {k: v for k, v in team.items() if k != "_id"}
     return resp
+
+@api_router.put("/teams/my")
+async def update_my_team(req: TeamUpdate, user=Depends(get_current_user)):
+    if not user.get("team_id"):
+        raise HTTPException(status_code=400, detail="Not in a team")
+    team = await db.teams.find_one({"id": user["team_id"]}, {"_id": 0})
+    if not team or team.get("creator_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Only team leader can edit")
+    updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    if updates:
+        await db.teams.update_one({"id": user["team_id"]}, {"$set": updates})
+    updated = await db.teams.find_one({"id": user["team_id"]}, {"_id": 0})
+    return updated
+
+@api_router.get("/teams/search")
+async def search_teams(q: str = ""):
+    query = {}
+    if q:
+        query = {"name": {"$regex": q, "$options": "i"}}
+    teams = await db.teams.find(query, {"_id": 0}).to_list(20)
+    for team in teams:
+        team["members_count"] = await db.users.count_documents({"team_id": team["id"]})
+    return teams
 
 @api_router.get("/teams/my")
 async def get_my_team(user=Depends(get_current_user)):
@@ -484,6 +515,31 @@ async def leave_team(user=Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="Not in a team")
     await db.users.update_one({"id": user["id"]}, {"$set": {"team_id": None}})
     return {"message": "Left team"}
+
+
+# ==========================================
+# Supporter Invite Routes
+# ==========================================
+
+@api_router.post("/supporter-invites")
+async def create_supporter_invite(req: SupporterInvite, user=Depends(get_current_user)):
+    invite = {
+        "id": str(uuid.uuid4()),
+        "walker_id": user["id"],
+        "name": req.name,
+        "email": req.email,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.supporter_invites.insert_one(invite)
+    resp = {k: v for k, v in invite.items() if k != "_id"}
+    return resp
+
+@api_router.get("/supporter-invites")
+async def list_supporter_invites(user=Depends(get_current_user)):
+    invites = await db.supporter_invites.find(
+        {"walker_id": user["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(1000)
+    return invites
 
 
 # ==========================================
@@ -620,7 +676,7 @@ async def leaderboard_distance():
         if total_km > 0:
             result.append({
                 "user_id": u["id"],
-                "display_name": u.get("display_name", u["first_name"]),
+                "display_name": u.get("display_name", u.get("full_name", "")),
                 "country": u.get("country", ""),
                 "total_km": total_km,
             })
@@ -639,7 +695,7 @@ async def leaderboard_raised():
         if total_raised > 0:
             result.append({
                 "user_id": u["id"],
-                "display_name": u.get("display_name", u["first_name"]),
+                "display_name": u.get("display_name", u.get("full_name", "")),
                 "country": u.get("country", ""),
                 "total_raised": total_raised,
             })
@@ -920,9 +976,8 @@ async def seed_data():
         "id": "user-admin",
         "email": "sabrina@kenyaeducationfund.org",
         "password_hash": hash_password("admin123"),
-        "first_name": "Sabrina",
+        "full_name": "Sabrina Rodriguez",
         "display_name": "Sabrina (KEF)",
-        "country": "US",
         "role": "admin",
         "challenge_id": None,
         "walker_type_id": None,
@@ -934,9 +989,8 @@ async def seed_data():
         "id": "user-john",
         "email": "john@example.com",
         "password_hash": hash_password("walker123"),
-        "first_name": "John",
+        "full_name": "John Walker",
         "display_name": "JohnnySteps",
-        "country": "US",
         "role": "walker",
         "challenge_id": "ch-naivasha",
         "walker_type_id": "wt-builder",
@@ -948,9 +1002,8 @@ async def seed_data():
         "id": "user-mary",
         "email": "mary@example.com",
         "password_hash": hash_password("walker123"),
-        "first_name": "Mary",
+        "full_name": "Mary Ochieng",
         "display_name": "MaryMoves",
-        "country": "KE",
         "role": "walker",
         "challenge_id": "ch-migration",
         "walker_type_id": "wt-leader",
@@ -964,6 +1017,7 @@ async def seed_data():
         "id": "team-kef-walkers",
         "name": "KEF Trailblazers",
         "description": "Walking together for education in Kenya!",
+        "tagline": "Every step educates a child",
         "invite_code": "KEF2024A",
         "creator_id": "user-john",
         "challenge_id": "ch-naivasha",

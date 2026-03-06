@@ -7,12 +7,13 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { LogIn } from 'lucide-react';
+import { LogIn, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -61,16 +62,26 @@ export default function LoginPage() {
             </div>
             <div>
               <Label htmlFor="password" className="text-stone-700 text-sm font-medium">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-                className="mt-1 rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 h-12"
-                data-testid="login-password-input"
-              />
+              <div className="relative mt-1">
+                <Input
+                  id="password"
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                  className="rounded-xl border-stone-200 bg-stone-50 focus:bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 h-12 pr-11"
+                  data-testid="login-password-input"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                  data-testid="login-toggle-password"
+                >
+                  {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
             <Button
               type="submit"

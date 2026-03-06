@@ -4,19 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import api from '../lib/api';
 import { User, Save } from 'lucide-react';
 
-const COUNTRIES = ['US', 'UK', 'KE', 'CA', 'AU', 'DE', 'FR', 'IN', 'NG', 'ZA', 'Other'];
-
 export default function ProfilePage() {
   const { user, fetchUser } = useAuth();
   const [form, setForm] = useState({
-    first_name: user?.first_name || '',
+    full_name: user?.full_name || '',
     display_name: user?.display_name || '',
-    country: user?.country || 'US',
   });
   const [saving, setSaving] = useState(false);
 
@@ -54,12 +50,12 @@ export default function ProfilePage() {
           <CardContent>
             <form onSubmit={handleSave} className="space-y-4 mt-4">
               <div>
-                <Label className="text-stone-700 text-sm font-medium">First Name</Label>
+                <Label className="text-stone-700 text-sm font-medium">Full Name</Label>
                 <Input
-                  value={form.first_name}
-                  onChange={(e) => setForm(f => ({...f, first_name: e.target.value}))}
+                  value={form.full_name}
+                  onChange={(e) => setForm(f => ({...f, full_name: e.target.value}))}
                   className="mt-1 rounded-xl border-stone-200 bg-stone-50 focus:bg-white h-12"
-                  data-testid="profile-first-name-input"
+                  data-testid="profile-full-name-input"
                 />
               </div>
               <div>
@@ -70,17 +66,6 @@ export default function ProfilePage() {
                   className="mt-1 rounded-xl border-stone-200 bg-stone-50 focus:bg-white h-12"
                   data-testid="profile-display-name-input"
                 />
-              </div>
-              <div>
-                <Label className="text-stone-700 text-sm font-medium">Country</Label>
-                <Select value={form.country} onValueChange={(v) => setForm(f => ({...f, country: v}))}>
-                  <SelectTrigger className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-12" data-testid="profile-country-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="pt-2">
                 <p className="text-xs text-stone-400 mb-1">Email</p>
