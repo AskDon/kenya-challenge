@@ -55,6 +55,7 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
   - Achievement level display
   - Pledge form (flat amount option with preset $25/$50/$100 and custom)
   - Supporter signup/login flow integrated in pledge form
+  - **Social Share Buttons** (Facebook, X/Twitter, LinkedIn, WhatsApp, Email, Copy link)
 - **Supporter Dashboard** (`/supporter-dashboard`) showing:
   - Stats: Active pledges, walkers supported, total pledged
   - Pledge cards with walker info, progress bar, pledge amount
@@ -66,6 +67,19 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
   - Admin: Admin, Leaderboard
 - **Login redirect** based on role (supporters → /supporter-dashboard)
 - Backend APIs: POST /api/pledges, POST /api/supporters/signup, GET /api/supporters/dashboard
+
+### 2026-03-06 - Teammate Signup & Enhanced Team Page
+- **Teammate Signup Page** (`/teams/join/{inviteCode}`) with 2-part flow:
+  - Part 1: Account creation (Full Name, Display Name, Email, Password, Confirm Password) with Login toggle
+  - Part 2: Challenge selection, Walker Type selection, Achievement Levels table, Invite Supporters (optional), Fundraising link, Mock Payment
+  - Auto-joins team after account creation
+- **Enhanced Team Page** (`/team`):
+  - Team Leader badge and "Led by [name]" subtitle
+  - **Avg Completion %** stat card
+  - Member table with progress bars and percentage
+  - Leader can see "Invite Members" button
+  - **Leader can remove non-leader members** (trash icon)
+- Backend APIs: DELETE /api/teams/members/{member_id}, Enhanced GET /api/teams/my with leader info and avg_progress_pct
 
 ## Seed Accounts
 - Admin: sabrina@kenyaeducationfund.org / admin123
@@ -79,7 +93,7 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - [x] Auth system
 - [x] Challenge management
 - [x] Activity logging
-- [x] Teams
+- [x] Teams with invite links
 - [x] Basic fundraising pages
 - [x] Leaderboards
 - [x] Admin console
@@ -87,6 +101,9 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - [x] Multi-step onboarding wizard
 - [x] **Supporter pledge system (flat amount pledges)**
 - [x] **Supporter Dashboard**
+- [x] **Social Share buttons on Fundraising page**
+- [x] **Teammate Signup 2-part flow**
+- [x] **Enhanced Team Page** (leader display, avg completion %, member removal)
 
 ### P1 (Upcoming)
 - [ ] Real map visualization (replace progress bar with interactive map)
@@ -95,10 +112,10 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - [ ] Shareable achievement certificates
 
 ### P2 (Future)
-- [ ] Stripe payment integration
+- [ ] Stripe payment integration (replace mock payment)
 - [ ] Magic link/passwordless login
 - [ ] Corporate Sponsor user flow
 - [ ] Fitness tracker integrations (Apple Health, Google Fit)
 - [ ] Email notifications for sponsors
 - [ ] Deep analytics dashboard
-- [ ] Social sharing with OpenGraph previews
+- [ ] Open Graph meta tags for social preview images
