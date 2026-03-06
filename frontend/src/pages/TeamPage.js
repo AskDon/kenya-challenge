@@ -45,9 +45,31 @@ export default function TeamPage() {
   const copyInvite = () => {
     if (team?.invite_code) {
       const url = `${window.location.origin}/teams/join/${team.invite_code}`;
-      navigator.clipboard.writeText(url);
-      toast.success('Invite link copied!');
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(url).then(() => {
+          toast.success('Invite link copied!');
+        }).catch(() => fallbackCopy(url));
+      } else {
+        fallbackCopy(url);
+      }
     }
+  };
+
+  const fallbackCopy = (text) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      toast.success('Invite link copied!');
+    } catch {
+      toast.error('Copy manually: ' + text);
+    }
+    document.body.removeChild(textarea);
   };
 
   const handleLeave = async () => {

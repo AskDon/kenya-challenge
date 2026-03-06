@@ -6,10 +6,125 @@ import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
-import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2 } from 'lucide-react';
+import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2, Flag } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROUTE_BG = 'https://images.unsplash.com/photo-1759767119566-e7dad33d540b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
+
+function copyToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success('Link copied!');
+    }).catch(() => {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    toast.success('Link copied!');
+  } catch {
+    toast.error('Failed to copy. Please copy manually: ' + text);
+  }
+  document.body.removeChild(textarea);
+}
+
+function RouteMap({ challenge, totalKm, progressPct, milestones }) {
+  if (!challenge) return null;
+  const sortedMilestones = [...(milestones || [])].sort((a, b) => a.distance_km - b.distance_km);
+
+  return (
+    <div className="relative bg-stone-50 rounded-xl p-4 md:p-6" data-testid="route-map">
+      {/* Map background */}
+      <div className="relative">
+        {/* Route line */}
+        <div className="relative h-16 md:h-20 flex items-center">
+          {/* Background track */}
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-2 bg-stone-200 rounded-full" />
+          {/* Completed track */}
+          <div
+            className="absolute left-4 top-1/2 -translate-y-1/2 h-2 bg-orange-500 rounded-full transition-all duration-500"
+            style={{ width: `calc(${Math.min(progressPct, 100)}% - 2rem)` }}
+          />
+          {/* Milestone markers */}
+          {sortedMilestones.map((m, i) => {
+            const pct = (m.distance_km / challenge.total_distance_km) * 100;
+            const reached = totalKm >= m.distance_km;
+            return (
+              <div
+                key={i}
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
+                style={{ left: `calc(${pct}% * 0.92 + 4%)` }}
+              >
+                <div className={`w-4 h-4 rounded-full border-2 ${
+                  reached
+                    ? 'bg-orange-500 border-orange-600'
+                    : 'bg-white border-stone-300'
+                }`} title={m.title} />
+              </div>
+            );
+          })}
+          {/* Start marker */}
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+            <div className="w-5 h-5 rounded-full bg-emerald-500 border-2 border-emerald-600 flex items-center justify-center">
+              <Flag className="w-2.5 h-2.5 text-white" />
+            </div>
+          </div>
+          {/* Finish marker */}
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+            <div className="w-5 h-5 rounded-full bg-stone-800 border-2 border-stone-900 flex items-center justify-center">
+              <Flag className="w-2.5 h-2.5 text-white" />
+            </div>
+          </div>
+          {/* Walker position */}
+          <div
+            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500"
+            style={{ left: `calc(${Math.min(progressPct, 100)}% * 0.92 + 4%)` }}
+          >
+            <div className="relative">
+              <div className="w-8 h-8 rounded-full bg-orange-600 border-3 border-white shadow-lg flex items-center justify-center animate-pulse">
+                <Footprints className="w-4 h-4 text-white" />
+              </div>
+              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                {totalKm} km
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Milestone labels */}
+        <div className="relative h-12 mt-1">
+          {sortedMilestones.map((m, i) => {
+            const pct = (m.distance_km / challenge.total_distance_km) * 100;
+            const reached = totalKm >= m.distance_km;
+            return (
+              <div
+                key={i}
+                className="absolute -translate-x-1/2 text-center"
+                style={{ left: `calc(${pct}% * 0.92 + 4%)`, maxWidth: '80px' }}
+              >
+                <p className={`text-[9px] font-medium leading-tight ${reached ? 'text-orange-600' : 'text-stone-400'}`}>
+                  {m.title}
+                </p>
+                <p className="text-[8px] text-stone-300">{m.distance_km}km</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -25,8 +140,7 @@ export default function DashboardPage() {
 
   const copyFundraiseLink = () => {
     const url = `${window.location.origin}/fundraise/${user.id}`;
-    navigator.clipboard.writeText(url);
-    toast.success('Fundraising link copied!');
+    copyToClipboard(url);
   };
 
   if (loading) return (
@@ -36,21 +150,32 @@ export default function DashboardPage() {
   );
 
   const hasChallenge = user?.challenge_id && progress?.challenge;
+  const isComplete = progress?.progress_pct >= 100;
 
   return (
     <div className="container-app py-8 md:py-12" data-testid="dashboard-page">
-      {/* Greeting */}
-      <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-stone-900">
-          Habari, {user?.display_name || user?.full_name}!
-        </h1>
-        <p className="text-stone-500 mt-1">
-          {hasChallenge ? 'Your journey continues. Keep walking!' : 'Choose a challenge to start your journey.'}
-        </p>
+      {/* Greeting + Next Challenge button */}
+      <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-stone-900">
+            Habari, {user?.display_name || user?.full_name}!
+          </h1>
+          <p className="text-stone-500 mt-1">
+            {hasChallenge
+              ? isComplete ? 'Congratulations! You completed your challenge!' : 'Your journey continues. Keep walking!'
+              : 'Choose a challenge to start your journey.'}
+          </p>
+        </div>
+        {hasChallenge && isComplete && (
+          <Link to="/onboarding">
+            <Button className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium px-6 py-5 h-auto" data-testid="start-next-challenge-btn">
+              Start Your Next Challenge <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
+        )}
       </div>
 
       {!hasChallenge ? (
-        /* No challenge selected */
         <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
           <CardContent className="p-8 text-center">
             <Mountain className="w-12 h-12 text-orange-300 mx-auto mb-4" />
@@ -73,7 +198,7 @@ export default function DashboardPage() {
               { label: 'Distance', value: `${progress.total_km} km`, icon: MapPin, color: 'bg-orange-50 text-orange-600' },
               { label: 'Steps', value: progress.total_steps?.toLocaleString(), icon: Footprints, color: 'bg-emerald-50 text-emerald-600' },
               { label: 'Raised', value: `$${progress.total_raised}`, icon: Heart, color: 'bg-rose-50 text-rose-600' },
-              { label: 'Sponsors', value: progress.sponsors_count, icon: Users, color: 'bg-sky-50 text-sky-600' },
+              { label: 'Supporters', value: progress.sponsors_count, icon: Users, color: 'bg-sky-50 text-sky-600' },
             ].map((stat) => (
               <Card key={stat.label} className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
                 <CardContent className="p-5">
@@ -87,15 +212,15 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Route Progress */}
-          <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden" data-testid="route-progress-card">
-            <div className="relative h-48 md:h-56">
+          {/* Challenge Progress */}
+          <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden" data-testid="challenge-progress-card">
+            <div className="relative h-40 md:h-48">
               <img src={ROUTE_BG} alt="Kenya route" className="w-full h-full object-cover" />
               <div className="absolute inset-0 bg-stone-900/50" />
               <div className="absolute inset-0 flex flex-col justify-end p-6">
                 <div className="flex items-center justify-between text-white mb-2">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-stone-300 font-medium">Current Route</p>
+                    <p className="text-xs uppercase tracking-wider text-stone-300 font-medium">Current Challenge</p>
                     <p className="text-lg font-bold">{progress.challenge.name}</p>
                   </div>
                   <div className="text-right">
@@ -103,25 +228,20 @@ export default function DashboardPage() {
                     <p className="text-xs text-stone-300">{progress.total_km} / {progress.challenge.total_distance_km} km</p>
                   </div>
                 </div>
-                <div className="relative">
-                  <Progress value={progress.progress_pct} className="h-3 bg-white/20" />
-                  {/* Milestone markers */}
-                  {progress.challenge.milestones?.map((m, i) => {
-                    const pct = (m.distance_km / progress.challenge.total_distance_km) * 100;
-                    return (
-                      <div
-                        key={i}
-                        className="absolute top-0 w-1 h-3 bg-white/60"
-                        style={{ left: `${pct}%` }}
-                        title={m.title}
-                      />
-                    );
-                  })}
-                </div>
+                <Progress value={progress.progress_pct} className="h-3 bg-white/20" />
               </div>
             </div>
             <CardContent className="p-6">
-              <div className="flex flex-wrap gap-4">
+              {/* Route Map */}
+              <RouteMap
+                challenge={progress.challenge}
+                totalKm={progress.total_km}
+                progressPct={progress.progress_pct}
+                milestones={progress.challenge.milestones}
+              />
+
+              {/* Milestone info */}
+              <div className="flex flex-wrap gap-4 mt-4">
                 {progress.current_milestone && (
                   <div className="flex-1 min-w-[200px]">
                     <p className="text-xs text-stone-400 uppercase tracking-wider font-medium mb-1">Current Location</p>
@@ -136,14 +256,21 @@ export default function DashboardPage() {
                     <p className="text-xs text-stone-500">{progress.next_milestone.distance_km - progress.total_km > 0 ? `${(progress.next_milestone.distance_km - progress.total_km).toFixed(1)} km away` : 'Reached!'}</p>
                   </div>
                 )}
+                {isComplete && !progress.next_milestone && (
+                  <div className="flex-1 min-w-[200px]">
+                    <p className="text-xs text-emerald-600 uppercase tracking-wider font-bold mb-1">Challenge Complete!</p>
+                    <p className="text-sm font-bold text-stone-900">You've completed {progress.challenge.name}</p>
+                    <p className="text-xs text-stone-500">{progress.total_km} km walked</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Link to="/activity" className="block">
-              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer">
+              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer h-full">
                 <CardContent className="p-5 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
                     <TrendingUp className="w-5 h-5 text-orange-600" />
@@ -157,21 +284,21 @@ export default function DashboardPage() {
             </Link>
 
             <button onClick={copyFundraiseLink} className="block w-full text-left">
-              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer">
+              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer h-full">
                 <CardContent className="p-5 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
                     <Share2 className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
                     <p className="font-bold text-stone-900 text-sm">Share Fundraising Page</p>
-                    <p className="text-xs text-stone-500">Copy your sponsor link</p>
+                    <p className="text-xs text-stone-500">Copy your supporter link</p>
                   </div>
                 </CardContent>
               </Card>
             </button>
 
             <Link to="/team" className="block">
-              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer">
+              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer h-full">
                 <CardContent className="p-5 flex items-center gap-4">
                   <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center shrink-0">
                     <Users className="w-5 h-5 text-sky-600" />
@@ -179,6 +306,20 @@ export default function DashboardPage() {
                   <div>
                     <p className="font-bold text-stone-900 text-sm">Your Team</p>
                     <p className="text-xs text-stone-500">{progress.team ? progress.team.name : 'Create or join a team'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/supporters" className="block">
+              <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-pointer h-full">
+                <CardContent className="p-5 flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+                    <Heart className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-stone-900 text-sm">Your Supporters</p>
+                    <p className="text-xs text-stone-500">Review and invite supporters</p>
                   </div>
                 </CardContent>
               </Card>

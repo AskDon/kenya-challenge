@@ -257,6 +257,25 @@ class KenyaChallengeAPITester:
         
         return success and success2
 
+    def test_sponsors_endpoint(self):
+        """Test sponsors endpoint for john user"""
+        # Test specific endpoint mentioned in requirements: GET /api/sponsors/user-john
+        success, response = self.run_test("Get sponsors for user-john", "GET", "sponsors/user-john", 200)
+        
+        if success:
+            if isinstance(response, list):
+                self.log_result("Sponsors data structure", True, f"Found {len(response)} sponsors")
+            else:
+                self.log_result("Sponsors data structure", False, "Response is not a list")
+        
+        # Also test general sponsors endpoint
+        if self.user_id:
+            success2, response2 = self.run_test("Get sponsors for current user", "GET", f"sponsors/{self.user_id}", 200)
+            if success2:
+                self.log_result("Current user sponsors", True, f"Found {len(response2)} sponsors")
+        
+        return success
+
     def run_all_tests(self):
         """Run all tests"""
         print("🔍 Starting Kenya Challenge API Tests...\n")
@@ -274,6 +293,7 @@ class KenyaChallengeAPITester:
             self.test_get_profile()
             self.test_user_progress()
             self.test_supporter_invites()
+            self.test_sponsors_endpoint()  # Add new test
         
         print("\n👤 Testing new user signup...")
         # Reset token and test new user signup

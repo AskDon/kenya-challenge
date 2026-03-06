@@ -29,6 +29,7 @@ export default function Navbar() {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/activity', label: 'Activity', icon: Footprints },
     { to: '/team', label: 'Team', icon: Users },
+    { to: '/supporters', label: 'Supporters', icon: Heart },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
   ];
 
