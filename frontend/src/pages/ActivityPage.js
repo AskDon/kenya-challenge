@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,12 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 import api from '../lib/api';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { CalendarIcon, Footprints, MapPin, Plus, Trash2 } from 'lucide-react';
+import { CalendarIcon, Footprints, MapPin, Plus, Trash2, Smartphone, RefreshCw, Unlink, CheckCircle } from 'lucide-react';
 
 const ROUTE_BG = 'https://images.unsplash.com/photo-1759767119566-e7dad33d540b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
 
 export default function ActivityPage() {
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activities, setActivities] = useState([]);
   const [progress, setProgress] = useState(null);
   const [date, setDate] = useState(new Date());
@@ -24,14 +26,77 @@ export default function ActivityPage() {
   const [km, setKm] = useState('');
   const [mode, setMode] = useState('steps');
   const [submitting, setSubmitting] = useState(false);
+  
+  // Google Fit state
+  const [fitnessStatus, setFitnessStatus] = useState({ configured: false });
+  const [syncing, setSyncing] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   const loadData = () => {
-    Promise.all([api.get('/activities'), api.get('/users/progress')])
-      .then(([a, p]) => { setActivities(a.data); setProgress(p.data); })
+    Promise.all([
+      api.get('/activities'), 
+      api.get('/users/progress'),
+      api.get('/fitness/status').catch(() => ({ data: { configured: false } }))
+    ])
+      .then(([a, p, f]) => { 
+        setActivities(a.data); 
+        setProgress(p.data);
+        setFitnessStatus(f.data);
+      })
       .catch(() => {});
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { 
+    loadData();
+    
+    // Check for fitness connection callback
+    if (searchParams.get('fitness_connected') === 'true') {
+      toast.success('Google Fit connected successfully!');
+      fetchUser();
+    } else if (searchParams.get('fitness_error') === 'true') {
+      toast.error('Failed to connect Google Fit');
+    }
+  }, [searchParams]);
+
+  const handleConnectGoogleFit = async () => {
+    try {
+      const res = await api.get('/fitness/connect');
+      window.location.href = res.data.authorization_url;
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to connect');
+    }
+  };
+
+  const handleSyncSteps = async () => {
+    setSyncing(true);
+    try {
+      const res = await api.post('/fitness/sync');
+      if (res.data.steps > 0) {
+        toast.success(`Synced ${res.data.steps.toLocaleString()} steps from Google Fit!`);
+        loadData();
+      } else {
+        toast.info('No new steps to sync');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to sync steps');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!window.confirm('Disconnect Google Fit? You can reconnect later.')) return;
+    setDisconnecting(true);
+    try {
+      await api.delete('/fitness/disconnect');
+      toast.success('Google Fit disconnected');
+      fetchUser();
+    } catch (err) {
+      toast.error('Failed to disconnect');
+    } finally {
+      setDisconnecting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -77,8 +142,65 @@ export default function ActivityPage() {
       <h1 className="text-2xl md:text-3xl font-bold text-stone-900 mb-8">Activity Log</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Add Activity + Route Progress */}
+        {/* Left: Add Activity + Google Fit + Route Progress */}
         <div className="lg:col-span-1 space-y-6">
+          {/* Google Fit Integration */}
+          {fitnessStatus.configured && (
+            <Card className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100" data-testid="google-fit-card">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <Smartphone className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-stone-900">Google Fit</h3>
+                    <p className="text-xs text-stone-500">Sync steps from your phone</p>
+                  </div>
+                </div>
+                
+                {user?.google_fit_connected ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-emerald-600">
+                      <CheckCircle className="w-4 h-4" />
+                      <span className="text-sm font-medium">Connected</span>
+                      {user.google_fit_email && (
+                        <span className="text-xs text-stone-400">({user.google_fit_email})</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleSyncSteps}
+                        disabled={syncing}
+                        className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white h-10"
+                        data-testid="sync-steps-btn"
+                      >
+                        <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? 'animate-spin' : ''}`} />
+                        {syncing ? 'Syncing...' : 'Sync Steps'}
+                      </Button>
+                      <Button
+                        onClick={handleDisconnect}
+                        disabled={disconnecting}
+                        variant="outline"
+                        className="rounded-xl border-stone-200 text-stone-500 h-10"
+                        data-testid="disconnect-fit-btn"
+                      >
+                        <Unlink className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleConnectGoogleFit}
+                    className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white h-10"
+                    data-testid="connect-google-fit-btn"
+                  >
+                    <Smartphone className="w-4 h-4 mr-2" /> Connect Google Fit
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Add Activity Form */}
           <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             <CardContent className="p-6">

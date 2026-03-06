@@ -149,9 +149,48 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - [ ] Route map visual progress indicator (Option B: static map with position marker)
 
 ### P2 (Future)
-- [ ] Stripe payment integration (replace mock payment)
+- [ ] Stripe payment integration (replace mock payment) - **Payment service module ready**
 - [ ] Magic link/passwordless login
-- [ ] Fitness tracker integrations (Apple Health, Google Fit)
 - [ ] Email notifications for sponsors
 - [ ] Deep analytics dashboard
 - [ ] Open Graph meta tags for social preview images
+
+## Technical Architecture
+
+### Services Module (`/app/backend/services/`)
+- **payment_service.py** - Centralized payment logic with Stripe-ready interfaces
+  - `PaymentService` class with donation, transaction, and pricing level operations
+  - Models: `Donation`, `Transaction`, `PricingLevel`, `PaymentStatus`, `PaymentMethod`, `Currency`
+  - Placeholder methods for Stripe PaymentIntent, webhooks, and refunds
+  
+- **google_fit_service.py** - Google Fit API integration
+  - OAuth 2.0 flow (authorization URL, token exchange, refresh)
+  - Step count retrieval (daily, historical)
+  - Sync endpoint to import steps as activities
+
+### Google Fit Setup Instructions
+To enable Google Fit integration:
+1. Create project in Google Cloud Console
+2. Enable Fitness API
+3. Create OAuth 2.0 credentials (Web application)
+4. Set authorized redirect URI: `{BACKEND_URL}/api/fitness/callback`
+5. Add environment variables to backend/.env:
+   ```
+   GOOGLE_FIT_CLIENT_ID=your_client_id
+   GOOGLE_FIT_CLIENT_SECRET=your_client_secret
+   GOOGLE_FIT_REDIRECT_URI=https://your-domain.com/api/fitness/callback
+   FRONTEND_URL=https://your-frontend-domain.com
+   ```
+
+### Stripe Setup Instructions (When Ready)
+1. Install stripe package: `pip install stripe`
+2. Add environment variables:
+   ```
+   STRIPE_API_KEY=sk_live_xxx
+   STRIPE_WEBHOOK_SECRET=whsec_xxx
+   ```
+3. Implement methods in `PaymentService`:
+   - `create_stripe_payment_intent()`
+   - `confirm_stripe_payment()`
+   - `process_stripe_webhook()`
+

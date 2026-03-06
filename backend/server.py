@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, Depends, HTTPException, Header, UploadFile, File
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import uuid
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 
@@ -1597,6 +1598,198 @@ async def delete_sponsor_inquiry(inquiry_id: str, user=Depends(get_admin_user)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Inquiry not found")
     return {"message": "Deleted"}
+
+
+# ==========================================
+# Google Fit Integration
+# ==========================================
+
+from services.google_fit_service import GoogleFitService
+
+google_fit = GoogleFitService()
+
+# Store pending OAuth states (in production, use Redis or database)
+pending_google_fit_states = {}
+
+@api_router.get("/fitness/status")
+async def get_fitness_status():
+    """Check if Google Fit integration is configured"""
+    return {
+        "configured": google_fit.is_configured,
+        "message": "Google Fit integration ready" if google_fit.is_configured else "Google Fit not configured. Contact administrator."
+    }
+
+@api_router.get("/fitness/connect")
+async def connect_google_fit(user=Depends(get_current_user)):
+    """Initiate Google Fit OAuth flow"""
+    if not google_fit.is_configured:
+        raise HTTPException(status_code=503, detail="Google Fit integration not configured")
+    
+    state = f"{user['id']}:{str(uuid.uuid4())}"
+    pending_google_fit_states[state] = {
+        "user_id": user["id"],
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    auth_url = google_fit.get_authorization_url(state)
+    return {"authorization_url": auth_url, "state": state}
+
+@api_router.get("/fitness/callback")
+async def google_fit_callback(code: str, state: str):
+    """Handle Google Fit OAuth callback"""
+    # Verify state
+    if state not in pending_google_fit_states:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    
+    state_data = pending_google_fit_states.pop(state)
+    user_id = state_data["user_id"]
+    
+    try:
+        # Exchange code for tokens
+        tokens = await google_fit.exchange_code_for_tokens(code)
+        
+        # Get Google user info
+        google_user = await google_fit.get_user_info(tokens["access_token"])
+        
+        # Store tokens in user record
+        await db.users.update_one(
+            {"id": user_id},
+            {"$set": {
+                "google_fit_connected": True,
+                "google_fit_access_token": tokens["access_token"],
+                "google_fit_refresh_token": tokens.get("refresh_token"),
+                "google_fit_token_expires": (datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"])).isoformat(),
+                "google_fit_email": google_user.get("email"),
+            }}
+        )
+        
+        # Redirect to frontend success page
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+        return RedirectResponse(url=f"{frontend_url}/activity?fitness_connected=true")
+        
+    except Exception as e:
+        logger.error(f"Google Fit OAuth error: {e}")
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+        return RedirectResponse(url=f"{frontend_url}/activity?fitness_error=true")
+
+@api_router.get("/fitness/steps")
+async def get_fitness_steps(days: int = 7, user=Depends(get_current_user)):
+    """Get step data from Google Fit"""
+    if not user.get("google_fit_connected"):
+        raise HTTPException(status_code=400, detail="Google Fit not connected")
+    
+    access_token = user.get("google_fit_access_token")
+    
+    # Check if token needs refresh
+    token_expires = user.get("google_fit_token_expires")
+    if token_expires:
+        expires_dt = datetime.fromisoformat(token_expires.replace("Z", "+00:00"))
+        if expires_dt < datetime.now(timezone.utc):
+            # Refresh token
+            refresh_token = user.get("google_fit_refresh_token")
+            if not refresh_token:
+                raise HTTPException(status_code=401, detail="Token expired and no refresh token available")
+            
+            try:
+                new_tokens = await google_fit.refresh_access_token(refresh_token)
+                access_token = new_tokens["access_token"]
+                
+                # Update stored token
+                await db.users.update_one(
+                    {"id": user["id"]},
+                    {"$set": {
+                        "google_fit_access_token": access_token,
+                        "google_fit_token_expires": (datetime.now(timezone.utc) + timedelta(seconds=new_tokens["expires_in"])).isoformat(),
+                    }}
+                )
+            except Exception:
+                raise HTTPException(status_code=401, detail="Failed to refresh token")
+    
+    try:
+        end_date = datetime.now(timezone.utc)
+        start_date = end_date - timedelta(days=days)
+        
+        steps_data = await google_fit.get_daily_steps(access_token, start_date, end_date)
+        
+        return {
+            "steps_data": steps_data,
+            "date_range": {
+                "start": start_date.date().isoformat(),
+                "end": end_date.date().isoformat(),
+            }
+        }
+    except Exception as e:
+        logger.error(f"Failed to get Google Fit steps: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve step data")
+
+@api_router.post("/fitness/sync")
+async def sync_fitness_steps(user=Depends(get_current_user)):
+    """Sync steps from Google Fit and add as activity"""
+    if not user.get("google_fit_connected"):
+        raise HTTPException(status_code=400, detail="Google Fit not connected")
+    
+    # Get today's steps
+    access_token = user.get("google_fit_access_token")
+    
+    try:
+        today_steps = await google_fit.get_step_count_today(access_token)
+        
+        if today_steps > 0:
+            # Check if we already have activity for today
+            today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            existing = await db.activities.find_one({
+                "user_id": user["id"],
+                "source": "google_fit",
+                "date": today_start.date().isoformat()
+            })
+            
+            if existing:
+                # Update existing activity
+                await db.activities.update_one(
+                    {"id": existing["id"]},
+                    {"$set": {
+                        "steps": today_steps,
+                        "km": round(today_steps * 0.0008, 2),
+                        "synced_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                return {"message": "Steps updated", "steps": today_steps, "updated": True}
+            else:
+                # Create new activity
+                activity = {
+                    "id": str(uuid.uuid4()),
+                    "user_id": user["id"],
+                    "steps": today_steps,
+                    "km": round(today_steps * 0.0008, 2),
+                    "source": "google_fit",
+                    "date": today_start.date().isoformat(),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "synced_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.activities.insert_one(activity)
+                del activity["_id"]
+                return {"message": "Steps synced", "steps": today_steps, "activity": activity}
+        
+        return {"message": "No steps to sync", "steps": 0}
+        
+    except Exception as e:
+        logger.error(f"Failed to sync Google Fit steps: {e}")
+        raise HTTPException(status_code=500, detail="Failed to sync steps")
+
+@api_router.delete("/fitness/disconnect")
+async def disconnect_google_fit(user=Depends(get_current_user)):
+    """Disconnect Google Fit integration"""
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$unset": {
+            "google_fit_connected": "",
+            "google_fit_access_token": "",
+            "google_fit_refresh_token": "",
+            "google_fit_token_expires": "",
+            "google_fit_email": "",
+        }}
+    )
+    return {"message": "Google Fit disconnected"}
 
 
 # ==========================================
