@@ -81,6 +81,21 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
   - **Leader can remove non-leader members** (trash icon)
 - Backend APIs: DELETE /api/teams/members/{member_id}, Enhanced GET /api/teams/my with leader info and avg_progress_pct
 
+### 2026-03-06 - Corporate Sponsors Feature
+- **Admin Sponsorship Levels CRUD**:
+  - Create/Edit/Delete sponsorship levels (Title, Gold, Silver)
+  - Configure max sponsors per level (Title=1, Gold=5, Silver=15)
+  - Display order for home page sorting
+- **Admin Corporate Sponsors CRUD**:
+  - Create/Edit/Delete sponsors with name, level, website URL
+  - **Logo upload** (PNG, JPEG, WebP, SVG supported)
+  - Served from `/api/uploads/` static files
+- **Home Page Sponsors Section**:
+  - "Thank You to Our Sponsors" section
+  - Sponsors grouped by level (Title → Gold → Silver)
+  - Clickable logo/name cards linking to sponsor websites
+- Backend APIs: Full CRUD for `/api/sponsorship-levels` and `/api/corporate-sponsors`, Logo upload at POST `/api/corporate-sponsors/{id}/logo`
+
 ## Seed Accounts
 - Admin: sabrina@kenyaeducationfund.org / admin123
 - Walker 1: john@example.com / walker123
@@ -104,6 +119,7 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - [x] **Social Share buttons on Fundraising page**
 - [x] **Teammate Signup 2-part flow**
 - [x] **Enhanced Team Page** (leader display, avg completion %, member removal)
+- [x] **Corporate Sponsors** (Admin CRUD for levels & sponsors, logo upload, home page display)
 
 ### P1 (Upcoming)
 - [ ] Real map visualization (replace progress bar with interactive map)
@@ -114,7 +130,6 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 ### P2 (Future)
 - [ ] Stripe payment integration (replace mock payment)
 - [ ] Magic link/passwordless login
-- [ ] Corporate Sponsor user flow
 - [ ] Fitness tracker integrations (Apple Health, Google Fit)
 - [ ] Email notifications for sponsors
 - [ ] Deep analytics dashboard
