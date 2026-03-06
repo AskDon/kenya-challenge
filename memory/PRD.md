@@ -96,6 +96,23 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
   - Clickable logo/name cards linking to sponsor websites
 - Backend APIs: Full CRUD for `/api/sponsorship-levels` and `/api/corporate-sponsors`, Logo upload at POST `/api/corporate-sponsors/{id}/logo`
 
+### 2026-03-06 - Admin Enhancements & Become a Sponsor
+- **"Become a Sponsor" Form** (Landing Page):
+  - Contact form with Company Name, Contact Person, Email, Phone, Interested Level, Message
+  - Public submission creates inquiry in database
+  - Success confirmation displayed after submit
+- **Admin Sponsor Inquiries Tab**:
+  - View all sponsor inquiries with badge count for new ones
+  - Status management: New → Contacted → Confirmed / Declined
+  - Full contact details and message display
+- **Enhanced Challenge CRUD**:
+  - **Active/Inactive toggle** - Deactivate without deleting
+  - **Unique name validation**
+  - **Description limits** (50-2000 characters with counter)
+  - **Route map uploads**: POST `/api/challenges/{id}/route-map` and `/route-map-markers`
+  - **Milestone image uploads**: POST `/api/challenges/{id}/milestones/{index}/image`
+- Backend validation: Unique names, description length, file type restrictions
+
 ## Seed Accounts
 - Admin: sabrina@kenyaeducationfund.org / admin123
 - Walker 1: john@example.com / walker123
@@ -120,12 +137,16 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - [x] **Teammate Signup 2-part flow**
 - [x] **Enhanced Team Page** (leader display, avg completion %, member removal)
 - [x] **Corporate Sponsors** (Admin CRUD for levels & sponsors, logo upload, home page display)
+- [x] **"Become a Sponsor" contact form** (landing page + admin inquiries view)
+- [x] **Challenge Active/Inactive toggle**
+- [x] **Enhanced Challenge validation** (unique names, description limits)
+- [x] **Challenge route map & milestone image uploads**
 
 ### P1 (Upcoming)
-- [ ] Real map visualization (replace progress bar with interactive map)
 - [ ] Walker profile picture upload
 - [ ] Automated supporter billing notifications
 - [ ] Shareable achievement certificates
+- [ ] Route map visual progress indicator (Option B: static map with position marker)
 
 ### P2 (Future)
 - [ ] Stripe payment integration (replace mock payment)
