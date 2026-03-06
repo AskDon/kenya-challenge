@@ -44,11 +44,13 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-stone-200" data-testid="navbar">
       <div className="container-app flex items-center justify-between h-16">
-        <Link to="/" className="flex items-center gap-2 group" data-testid="nav-logo">
-          <div className="w-9 h-9 rounded-full bg-orange-600 flex items-center justify-center">
-            <Mountain className="w-5 h-5 text-white" />
-          </div>
-          <span className="font-bold text-stone-900 text-sm sm:text-base" style={{ fontFamily: "'Libre Baskerville', serif" }}>
+        <Link to="/" className="flex items-center gap-2.5 group" data-testid="nav-logo">
+          <img
+            src="https://customer-assets.emergentagent.com/job_kenyamiles/artifacts/82qudjyh_keficon-removebg.png"
+            alt="KEF"
+            className="w-10 h-10 object-contain"
+          />
+          <span className="font-bold text-lg sm:text-xl tracking-tight" style={{ fontFamily: "'Libre Baskerville', serif", color: '#1a3660' }}>
             The Kenya Challenge
           </span>
         </Link>

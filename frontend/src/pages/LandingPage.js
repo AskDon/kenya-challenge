@@ -31,7 +31,7 @@ export default function LandingPage() {
             <p className="text-orange-400 font-medium tracking-widest uppercase text-xs mb-4">
               Kenya Education Fund
             </p>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6">
               Walk for Education.<br />Walk for Kenya.
             </h1>
             <p className="text-stone-300 text-base sm:text-lg leading-relaxed mb-8 max-w-xl">

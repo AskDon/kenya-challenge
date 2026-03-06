@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { toast } from 'sonner';
 import api from '../lib/api';
-import { Mountain, LogIn } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -36,10 +36,12 @@ export default function LoginPage() {
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md bg-white rounded-2xl border border-stone-100 shadow-[0_4px_20px_-2px_rgba(87,83,78,0.1)]" data-testid="login-card">
         <CardHeader className="text-center pb-2">
-          <div className="w-12 h-12 rounded-full bg-orange-600 flex items-center justify-center mx-auto mb-4">
-            <Mountain className="w-6 h-6 text-white" />
-          </div>
-          <CardTitle className="text-2xl font-bold text-stone-900">Welcome Back</CardTitle>
+          <img
+            src="https://customer-assets.emergentagent.com/job_kenyamiles/artifacts/82qudjyh_keficon-removebg.png"
+            alt="KEF"
+            className="w-14 h-14 object-contain mx-auto mb-4"
+          />
+          <CardTitle className="text-2xl font-bold" style={{ color: '#1a3660' }}>Welcome Back</CardTitle>
           <p className="text-sm text-stone-500 mt-1">Log in to continue your journey</p>
         </CardHeader>
         <CardContent>
