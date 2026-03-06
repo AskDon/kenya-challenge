@@ -8,27 +8,32 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - **Backend**: FastAPI (Python) with Motor (async MongoDB driver)
 - **Database**: MongoDB
 - **Auth**: JWT (email/password)
-- **Design**: KEF-inspired warm earth tones (orange #ea580c, green #059669, stone backgrounds)
+- **Design**: KEF-inspired (Navy #1a3660, Orange #ea580c, stone backgrounds)
 
-## User Personas
-1. **Walker** - Signs up, picks a challenge/level, logs activity, shares sponsor link
+## User Roles
+1. **Walker** - Signs up, picks a challenge/walker type, logs activity, shares fundraising link, manages supporters
 2. **Teammate** - Same as Walker but joins via team invite link
-3. **Sponsor** - Follows a link, makes a flat donation, sees progress
+3. **Supporter** - Creates pledges (flat or per-km) on walker's fundraising page, tracks pledges via dashboard
 4. **Corporate Sponsor** - Fills form, selects package (Title/Gold/Silver)
-5. **Admin (KEF)** - Configures challenges, pricing, views stats
+5. **Admin (KEF)** - Configures challenges, walker types, achievement levels, views stats
 
 ## Core Requirements
 - Auth & profiles (email/password, JWT)
 - Challenges with milestones (3 pre-seeded: 100km, 150km, 200km)
-- 5 Pricing levels (JAMBO $25 to GO TO KENYA $25,000)
+- Walker Types (entry fees: Basic $25, Builder $97, Leader $250)
+- Achievement Levels (fundraising milestones with swag rewards)
 - Teams with invite links
 - Activity logging (steps/km with conversion)
 - Route progress visualization
-- Public fundraising pages with sponsor donations
+- **Public fundraising pages with pledge system (per-km or flat amount)**
+- **Supporter signup/login flow with pledge creation**
+- **Supporter Dashboard to track pledges**
 - Leaderboards (individuals + teams, by distance + raised)
-- Admin console (CRUD challenges, pricing, stats, config)
+- Admin console (CRUD challenges, walker types, achievement levels, stats, config)
 
-## What's Been Implemented (2026-02-10)
+## What's Been Implemented
+
+### 2026-02-10 - Initial MVP
 - Full backend API (19+ endpoints, all tested 100%)
 - JWT authentication system
 - Complete CRUD for challenges, pricing levels, config
@@ -43,30 +48,57 @@ Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Educatio
 - Mobile-first responsive design
 - Route progress visualization with map placeholder
 
+### 2026-03-06 - Supporter & Pledge System
+- **Public Fundraising Page** (`/fundraise/{userId}`) with:
+  - Walker profile, team badge, progress stats
+  - Challenge info with route map and milestones
+  - Achievement level display
+  - Pledge form (flat amount option with preset $25/$50/$100 and custom)
+  - Supporter signup/login flow integrated in pledge form
+- **Supporter Dashboard** (`/supporter-dashboard`) showing:
+  - Stats: Active pledges, walkers supported, total pledged
+  - Pledge cards with walker info, progress bar, pledge amount
+  - Link to walker's fundraising page
+  - CTA to discover more walkers via leaderboard
+- **Role-based Navigation**:
+  - Walkers: Dashboard, Activity, Team, Supporters, Leaderboard
+  - Supporters: Dashboard, Leaderboard
+  - Admin: Admin, Leaderboard
+- **Login redirect** based on role (supporters → /supporter-dashboard)
+- Backend APIs: POST /api/pledges, POST /api/supporters/signup, GET /api/supporters/dashboard
+
 ## Seed Accounts
 - Admin: sabrina@kenyaeducationfund.org / admin123
 - Walker 1: john@example.com / walker123
 - Walker 2: mary@example.com / walker123
+- Supporter: supporter1@test.com / test1234
 
 ## Prioritized Backlog
-### P0 (Done)
+
+### P0 (Completed)
 - [x] Auth system
 - [x] Challenge management
 - [x] Activity logging
 - [x] Teams
-- [x] Fundraising pages
+- [x] Basic fundraising pages
 - [x] Leaderboards
 - [x] Admin console
+- [x] Walker Types & Achievement Levels separation
+- [x] Multi-step onboarding wizard
+- [x] **Supporter pledge system (flat amount pledges)**
+- [x] **Supporter Dashboard**
 
-### P1 (Next)
-- [ ] Real Stripe payment integration
-- [ ] Magic link / passwordless login
-- [ ] Fitness tracker integrations (Apple Health, Google Fit)
-- [ ] Email notifications for sponsors
+### P1 (Upcoming)
+- [ ] Real map visualization (replace progress bar with interactive map)
+- [ ] Walker profile picture upload
+- [ ] Automated supporter billing notifications
+- [ ] Shareable achievement certificates
 
 ### P2 (Future)
+- [ ] Stripe payment integration
+- [ ] Magic link/passwordless login
+- [ ] Corporate Sponsor user flow
+- [ ] Fitness tracker integrations (Apple Health, Google Fit)
+- [ ] Email notifications for sponsors
 - [ ] Deep analytics dashboard
-- [ ] Interactive map visualization (Mapbox/Google Maps)
 - [ ] Social sharing with OpenGraph previews
-- [ ] Corporate sponsor package management
-- [ ] Challenge completion certificates
