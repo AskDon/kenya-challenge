@@ -3,13 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Textarea } from '../components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import api from '../lib/api';
-import { toast } from 'sonner';
-import { ArrowRight, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap, Building2, Send, CheckCircle } from 'lucide-react';
+import { ArrowRight, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap, Building2 } from 'lucide-react';
 
 const HERO_BG = 'https://images.unsplash.com/photo-1738507967372-67c692309a07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
 const STUDENTS_IMG = 'https://images.unsplash.com/photo-1729691032175-d6edd1581a31?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwc3R1ZGVudHMlMjBzbWlsaW5nJTIwc2Nob29sJTIwdW5pZm9ybSUyMGtlbnlhfGVufDB8fHx8MTc3MDc0NzM1MHww&ixlib=rb-4.1.0&q=85';
@@ -19,43 +14,11 @@ export default function LandingPage() {
   const { user } = useAuth();
   const [challenges, setChallenges] = useState([]);
   const [sponsors, setSponsors] = useState([]);
-  const [sponsorLevels, setSponsorLevels] = useState([]);
-  
-  // Become a Sponsor form
-  const [inquiryForm, setInquiryForm] = useState({
-    company_name: '',
-    contact_name: '',
-    email: '',
-    phone: '',
-    interested_level: '',
-    message: ''
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     api.get('/challenges').then(r => setChallenges(r.data)).catch(() => {});
     api.get('/corporate-sponsors/public').then(r => setSponsors(r.data)).catch(() => {});
-    api.get('/sponsorship-levels').then(r => setSponsorLevels(r.data)).catch(() => {});
   }, []);
-
-  const handleInquirySubmit = async (e) => {
-    e.preventDefault();
-    if (!inquiryForm.company_name || !inquiryForm.contact_name || !inquiryForm.email) {
-      toast.error('Please fill in required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      await api.post('/sponsor-inquiries', inquiryForm);
-      setSubmitted(true);
-      toast.success('Thank you! We will contact you soon.');
-    } catch (err) {
-      toast.error('Failed to submit. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   return (
     <div>
@@ -152,9 +115,9 @@ export default function LandingPage() {
             <h2 className="text-2xl md:text-3xl font-bold text-stone-900 text-center mb-12">
               Choose Your Challenge
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {challenges.map((ch) => (
-                <Card key={ch.id} className="bg-stone-50 rounded-2xl border border-stone-100 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300">
+                <Card key={ch.id} className="bg-stone-50 rounded-2xl border border-stone-100 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 min-w-[300px] md:min-w-[340px] snap-start flex-shrink-0" style={{ maxWidth: challenges.length <= 3 ? 'none' : '340px' }}>
                   <div className="h-3 bg-gradient-to-r from-orange-500 to-emerald-600" />
                   <CardContent className="p-6">
                     <div className="flex items-center gap-2 mb-3">
@@ -202,20 +165,17 @@ export default function LandingPage() {
                 Your participation in The Kenya Challenge directly funds scholarships, uniforms, school supplies,
                 and mentorship for students who would otherwise not have access to education.
               </p>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-8">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">$105</p>
-                  <p className="text-xs text-stone-500">supports 1 child</p>
+                  <p className="text-2xl font-bold text-orange-600">$1,250</p>
+                  <p className="text-xs text-stone-500">support 1 child</p>
+                  <p className="text-xs text-stone-500">for 1 year</p>
                 </div>
-                <div className="w-px h-10 bg-stone-200" />
+                <div className="w-px h-12 bg-stone-200" />
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">$210</p>
-                  <p className="text-xs text-stone-500">supports 2 children</p>
-                </div>
-                <div className="w-px h-10 bg-stone-200" />
-                <div className="text-center">
-                  <p className="text-2xl font-bold text-orange-600">$315</p>
-                  <p className="text-xs text-stone-500">supports 3 children</p>
+                  <p className="text-2xl font-bold text-orange-600">$5,000</p>
+                  <p className="text-xs text-stone-500">support 1 child</p>
+                  <p className="text-xs text-stone-500">for 4 years</p>
                 </div>
               </div>
             </div>
@@ -272,13 +232,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="space-y-12">
+            <div className="space-y-16">
               {sponsors.map(({ level, sponsors: levelSponsors }) => (
                 <div key={level.id} className="text-center" data-testid={`sponsor-level-${level.id}`}>
-                  <h3 className="text-lg font-bold text-stone-800 mb-6 inline-block border-b-2 border-orange-300 pb-1">
+                  <h3 className="text-lg font-bold text-stone-800 mb-2 inline-block border-b-2 border-orange-300 pb-1">
                     {level.name}
                   </h3>
-                  <div className="flex flex-wrap justify-center items-center gap-8">
+                  <div className="flex flex-wrap justify-center items-center gap-8 mt-4">
                     {levelSponsors.map(sponsor => (
                       <a
                         key={sponsor.id}
@@ -311,124 +271,21 @@ export default function LandingPage() {
         </section>
       )}
 
-      {/* Become a Sponsor Form */}
+      {/* Become a Sponsor */}
       <section className="py-16 md:py-20 bg-[#1a3660]" data-testid="become-sponsor-section">
         <div className="container-app">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-10">
-              <Building2 className="w-10 h-10 text-orange-400 mx-auto mb-3" />
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                Become a Sponsor
-              </h2>
-              <p className="text-stone-300">
-                Partner with The Kenya Challenge and make a lasting impact on education in Kenya.
-                Your sponsorship helps students achieve their dreams.
-              </p>
-            </div>
-
-            {submitted ? (
-              <Card className="bg-white/10 backdrop-blur-sm border-white/20 rounded-2xl">
-                <CardContent className="p-10 text-center">
-                  <CheckCircle className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
-                  <h3 className="text-2xl font-bold text-white mb-2">Thank You!</h3>
-                  <p className="text-stone-300">
-                    We've received your inquiry and will be in touch soon to discuss sponsorship opportunities.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="bg-white/10 backdrop-blur-sm border-white/20 rounded-2xl">
-                <CardContent className="p-6 md:p-8">
-                  <form onSubmit={handleInquirySubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-white text-sm">Company Name *</Label>
-                        <Input
-                          value={inquiryForm.company_name}
-                          onChange={(e) => setInquiryForm(f => ({...f, company_name: e.target.value}))}
-                          placeholder="Your organization"
-                          required
-                          className="mt-1 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-stone-400 h-12"
-                          data-testid="sponsor-inquiry-company"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Contact Person *</Label>
-                        <Input
-                          value={inquiryForm.contact_name}
-                          onChange={(e) => setInquiryForm(f => ({...f, contact_name: e.target.value}))}
-                          placeholder="Your name"
-                          required
-                          className="mt-1 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-stone-400 h-12"
-                          data-testid="sponsor-inquiry-contact"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-white text-sm">Email *</Label>
-                        <Input
-                          type="email"
-                          value={inquiryForm.email}
-                          onChange={(e) => setInquiryForm(f => ({...f, email: e.target.value}))}
-                          placeholder="email@company.com"
-                          required
-                          className="mt-1 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-stone-400 h-12"
-                          data-testid="sponsor-inquiry-email"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white text-sm">Phone</Label>
-                        <Input
-                          value={inquiryForm.phone}
-                          onChange={(e) => setInquiryForm(f => ({...f, phone: e.target.value}))}
-                          placeholder="+1 (555) 123-4567"
-                          className="mt-1 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-stone-400 h-12"
-                          data-testid="sponsor-inquiry-phone"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-white text-sm">Interested Sponsorship Level</Label>
-                      <Select value={inquiryForm.interested_level} onValueChange={(v) => setInquiryForm(f => ({...f, interested_level: v}))}>
-                        <SelectTrigger className="mt-1 rounded-xl bg-white/10 border-white/20 text-white h-12" data-testid="sponsor-inquiry-level">
-                          <SelectValue placeholder="Select a level (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="undecided">Not sure yet</SelectItem>
-                          {sponsorLevels.map(level => (
-                            <SelectItem key={level.id} value={level.name}>{level.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-white text-sm">Message</Label>
-                      <Textarea
-                        value={inquiryForm.message}
-                        onChange={(e) => setInquiryForm(f => ({...f, message: e.target.value}))}
-                        placeholder="Tell us about your interest in sponsoring The Kenya Challenge..."
-                        rows={4}
-                        className="mt-1 rounded-xl bg-white/10 border-white/20 text-white placeholder:text-stone-400"
-                        data-testid="sponsor-inquiry-message"
-                      />
-                    </div>
-                    <Button
-                      type="submit"
-                      disabled={submitting}
-                      className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-6 h-auto text-base"
-                      data-testid="sponsor-inquiry-submit"
-                    >
-                      {submitting ? 'Submitting...' : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" /> Become a Sponsor
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            )}
+          <div className="max-w-2xl mx-auto text-center">
+            <Building2 className="w-10 h-10 text-orange-400 mx-auto mb-3" />
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Become a Sponsor
+            </h2>
+            <p className="text-stone-300 leading-relaxed">
+              Partner with The Kenya Challenge and make a lasting impact on education in Kenya.
+              Your sponsorship helps students achieve their dreams. Please contact{' '}
+              <a href="mailto:sabrina@kenyaeducationfund.org" className="text-orange-400 hover:text-orange-300 underline">
+                sabrina@kenyaeducationfund.org
+              </a>.
+            </p>
           </div>
         </div>
       </section>

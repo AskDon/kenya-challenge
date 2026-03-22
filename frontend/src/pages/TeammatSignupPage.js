@@ -310,7 +310,7 @@ export default function TeammateSignupPage() {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                    className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto px-10 mx-auto block"
                     data-testid="teammate-signup-submit"
                   >
                     {submitting ? 'Creating Account...' : 'Create Account & Join Team'}
@@ -365,7 +365,7 @@ export default function TeammateSignupPage() {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                    className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto px-10 mx-auto block"
                     data-testid="teammate-login-submit"
                   >
                     {submitting ? 'Logging in...' : 'Log In & Join Team'}
@@ -589,15 +589,17 @@ export default function TeammateSignupPage() {
             </CardContent>
           </Card>
 
+          <div className="text-center">
           <Button
             onClick={handleFinish}
             disabled={submitting || !selectedChallenge || !selectedType}
-            className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto text-base disabled:opacity-50"
+            className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto text-base disabled:opacity-50 px-12"
             data-testid="teammate-pay-btn"
           >
             <CreditCard className="w-4 h-4 mr-2" />
             {submitting ? 'Processing...' : `Pay $${selectedTypeObj?.cost_usd || 0} & Start Walking`}
           </Button>
+          </div>
           <p className="text-xs text-stone-400 text-center mt-3">
             No real payment is processed in this prototype.
           </p>

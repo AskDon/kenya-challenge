@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent } from '../components/ui/card';
@@ -11,7 +11,7 @@ import api from '../lib/api';
 import { toast } from 'sonner';
 import {
   Mountain, Check, ArrowRight, ArrowLeft, Users, Search,
-  Plus, Heart, Copy, CreditCard, Trash2, Award, X, UserPlus
+  Plus, Heart, Copy, CreditCard, Trash2, Award, X, UserPlus, Camera
 } from 'lucide-react';
 
 const STEPS = ['Challenge', 'Walker Type', 'Team', 'Invite Supporters', 'Pay'];
@@ -42,6 +42,9 @@ export default function OnboardingPage() {
 
   // Loading
   const [submitting, setSubmitting] = useState(false);
+  const [profilePic, setProfilePic] = useState(null);
+  const [profilePicPreview, setProfilePicPreview] = useState(null);
+  const picInputRef = useRef(null);
 
   useEffect(() => {
     Promise.all([
@@ -138,6 +141,14 @@ export default function OnboardingPage() {
   const handleFinish = async () => {
     setSubmitting(true);
     try {
+      // Upload profile pic if selected
+      if (profilePic) {
+        const formData = new FormData();
+        formData.append('file', profilePic);
+        await api.post('/auth/profile-picture', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }).catch(() => {});
+      }
       await api.post('/users/select-challenge', {
         challenge_id: selectedChallenge,
         walker_type_id: selectedType,
@@ -254,26 +265,73 @@ export default function OnboardingPage() {
             ))}
           </div>
 
-          {/* Achievement Levels Table */}
-          <Card className="rounded-2xl border border-stone-100">
+          {/* Optional Photo Upload */}
+          <Card className="rounded-2xl border border-stone-100 mb-6">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Camera className="w-5 h-5 text-orange-600" />
+                <h3 className="text-base font-bold text-stone-900">Upload a Photo</h3>
+                <Badge variant="outline" className="rounded-full text-[10px] border-stone-200 text-stone-400 ml-auto">Optional</Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-stone-100 flex items-center justify-center border-2 border-stone-200 shrink-0 cursor-pointer hover:border-orange-300 transition-colors"
+                  onClick={() => picInputRef.current?.click()} data-testid="onboarding-photo-upload">
+                  {profilePicPreview ? (
+                    <img src={profilePicPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-stone-300" />
+                  )}
+                </div>
+                <div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => picInputRef.current?.click()}
+                    className="rounded-xl border-stone-200 text-stone-600 text-xs" data-testid="onboarding-photo-btn">
+                    {profilePicPreview ? 'Change Photo' : 'Choose Photo'}
+                  </Button>
+                  <p className="text-xs text-stone-400 mt-1">This will appear on your fundraising page</p>
+                </div>
+                <input ref={picInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setProfilePic(file);
+                      setProfilePicPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Achievement Levels - Informational Only */}
+          <Card className="rounded-2xl border border-stone-100 bg-stone-50">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-3">
                 <Award className="w-5 h-5 text-orange-600" />
                 <h3 className="text-base font-bold text-stone-900">Achievement Levels</h3>
+                <Badge variant="outline" className="rounded-full text-[10px] border-stone-200 text-stone-400 ml-auto">Info</Badge>
               </div>
               <p className="text-xs text-stone-500 mb-3">
-                Achievements unlock as your total amount raised grows (your fee + teammates + supporters).
+                As your total amount raised grows (your fee + teammates + supporters), you unlock achievement levels and earn swag.
               </p>
-              <div className="space-y-2">
-                {achievementLevels.map((al) => (
-                  <div key={al.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`onboard-achievement-${al.id}`}>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-stone-900">{al.achievement}</p>
-                      <p className="text-xs text-stone-400">Swag: {al.swag}</p>
-                    </div>
-                    <Badge variant="outline" className="rounded-full text-xs border-stone-200 font-bold">${al.total_amount_usd.toLocaleString()}</Badge>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-200">
+                      <th className="text-left py-1.5 px-2 text-xs text-stone-400 font-medium">Level</th>
+                      <th className="text-left py-1.5 px-2 text-xs text-stone-400 font-medium">Amount Raised</th>
+                      <th className="text-left py-1.5 px-2 text-xs text-stone-400 font-medium">Swag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {achievementLevels.map((al) => (
+                      <tr key={al.id} className="border-b border-stone-100 last:border-none">
+                        <td className="py-2 px-2 text-sm font-medium text-stone-700">{al.achievement}</td>
+                        <td className="py-2 px-2 text-sm text-stone-600">${al.total_amount_usd.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-xs text-stone-500">{al.swag}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
@@ -442,100 +500,113 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* Step 3: Invite Supporters */}
+      {/* Step 3: Invite Supporters & Share */}
       {step === 3 && (
         <div data-testid="onboarding-step-supporters">
-          <h2 className="text-xl md:text-2xl font-bold text-stone-900 mb-2">Invite Supporters <span className="text-stone-400 font-normal text-base">(Optional)</span></h2>
+          <h2 className="text-xl md:text-2xl font-bold text-stone-900 mb-2">Spread the Word <span className="text-stone-400 font-normal text-base">(Optional)</span></h2>
           <p className="text-stone-500 text-sm mb-6">
-            Invite friends, family, and colleagues to support your challenge with pledges.
+            Invite supporters and share your fundraising page to get more pledges.
           </p>
 
-          <Card className="rounded-2xl border border-stone-100 mb-6">
+          <Card className="rounded-2xl border border-stone-100 mb-4">
             <CardContent className="p-5">
-              <div className="flex items-center justify-between mb-3">
-                <Label className="text-stone-700 text-sm font-medium">Add Supporters</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSupporters([...supporters, { name: '', email: '' }])}
-                  className="text-orange-600 text-xs"
-                  data-testid="add-supporter"
-                >
-                  <UserPlus className="w-3 h-3 mr-1" /> Add
-                </Button>
-              </div>
-              <div className="space-y-2">
-                {supporters.map((s, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input
-                      value={s.name}
-                      onChange={(e) => {
-                        const copy = [...supporters];
-                        copy[i].name = e.target.value;
-                        setSupporters(copy);
-                      }}
-                      placeholder="Name"
-                      className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
-                      data-testid={`supporter-name-${i}`}
-                    />
-                    <Input
-                      type="email"
-                      value={s.email}
-                      onChange={(e) => {
-                        const copy = [...supporters];
-                        copy[i].email = e.target.value;
-                        setSupporters(copy);
-                      }}
-                      placeholder="Email"
-                      className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
-                      data-testid={`supporter-email-${i}`}
-                    />
-                    {supporters.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSupporters(supporters.filter((_, j) => j !== i))}
-                        className="text-stone-300 hover:text-red-500 shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
+              {/* Invite by email */}
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="w-5 h-5 text-orange-600" />
+                    <Label className="text-stone-900 text-sm font-bold">Invite Supporters by Email</Label>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Fundraising Link */}
-          {user && (
-            <Card className="rounded-2xl border border-stone-100 bg-stone-900">
-              <CardContent className="p-5 text-center">
-                <Heart className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-                <p className="text-white text-sm font-bold mb-1">Your Fundraising Page</p>
-                <p className="text-stone-400 text-xs mb-3">Share this link with anyone to support your walk</p>
-                <div className="flex gap-2 max-w-md mx-auto">
-                  <Input
-                    readOnly
-                    value={`${window.location.origin}/fundraise/${user.id}`}
-                    className="rounded-xl bg-stone-800 border-stone-700 text-stone-300 text-xs h-10"
-                    data-testid="fundraise-link-input"
-                  />
                   <Button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/fundraise/${user.id}`);
-                      toast.success('Link copied!');
-                    }}
-                    className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white shrink-0"
-                    data-testid="copy-fundraise-link"
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSupporters([...supporters, { name: '', email: '' }])}
+                    className="text-orange-600 text-xs"
+                    data-testid="add-supporter"
                   >
-                    <Copy className="w-4 h-4" />
+                    <Plus className="w-3 h-3 mr-1" /> Add More
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="space-y-2">
+                  {supporters.map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input
+                        value={s.name}
+                        onChange={(e) => {
+                          const copy = [...supporters];
+                          copy[i].name = e.target.value;
+                          setSupporters(copy);
+                        }}
+                        placeholder="Name"
+                        className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
+                        data-testid={`supporter-name-${i}`}
+                      />
+                      <Input
+                        type="email"
+                        value={s.email}
+                        onChange={(e) => {
+                          const copy = [...supporters];
+                          copy[i].email = e.target.value;
+                          setSupporters(copy);
+                        }}
+                        placeholder="Email"
+                        className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
+                        data-testid={`supporter-email-${i}`}
+                      />
+                      {supporters.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSupporters(supporters.filter((_, j) => j !== i))}
+                          className="text-stone-300 hover:text-red-500 shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-5">
+                <div className="flex-1 h-px bg-stone-100" />
+                <span className="text-xs text-stone-400 font-medium">or share your link</span>
+                <div className="flex-1 h-px bg-stone-100" />
+              </div>
+
+              {/* Share Fundraising Link */}
+              {user && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Heart className="w-5 h-5 text-rose-500" />
+                    <Label className="text-stone-900 text-sm font-bold">Your Fundraising Page</Label>
+                  </div>
+                  <p className="text-stone-400 text-xs mb-3">Share this link with anyone to support your walk</p>
+                  <div className="flex gap-2">
+                    <Input
+                      readOnly
+                      value={`${window.location.origin}/fundraise/${user.id}`}
+                      className="rounded-xl bg-stone-50 border-stone-200 text-stone-600 text-xs h-10"
+                      data-testid="fundraise-link-input"
+                    />
+                    <Button
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/fundraise/${user.id}`);
+                        toast.success('Link copied!');
+                      }}
+                      className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white shrink-0"
+                      data-testid="copy-fundraise-link"
+                    >
+                      <Copy className="w-4 h-4 mr-1" /> Copy
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -580,15 +651,17 @@ export default function OnboardingPage() {
             </CardContent>
           </Card>
 
+          <div className="text-center">
           <Button
             onClick={handleFinish}
             disabled={submitting}
-            className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-6 h-auto text-base transition-all hover:scale-[1.02]"
+            className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto text-base transition-all hover:scale-[1.02] px-12"
             data-testid="onboarding-pay-btn"
           >
             <CreditCard className="w-4 h-4 mr-2" />
             {submitting ? 'Processing...' : `Pay $${selectedTypeObj?.cost_usd || 0} & Start Walking`}
           </Button>
+          </div>
           <p className="text-xs text-stone-400 text-center mt-3">
             No real payment is processed in this prototype.
           </p>

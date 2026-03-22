@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../components/ui/switch';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image, Mail, Phone, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image, Mail, Phone, CheckCircle, Clock, XCircle, MapPin } from 'lucide-react';
 
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
@@ -73,7 +73,6 @@ export default function AdminPage() {
           <TabsTrigger value="achievements" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-achievements"><Award className="w-3 h-3 mr-1" /> Achievements</TabsTrigger>
           <TabsTrigger value="users" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-users"><Users className="w-3 h-3 mr-1" /> Users</TabsTrigger>
           <TabsTrigger value="corporate" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-corporate"><Building2 className="w-3 h-3 mr-1" /> Corporate</TabsTrigger>
-          <TabsTrigger value="inquiries" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-inquiries"><Mail className="w-3 h-3 mr-1" /> Inquiries {sponsorInquiries.filter(i => i.status === 'new').length > 0 && <Badge className="ml-1 bg-orange-600 text-white text-[10px] px-1.5 py-0 rounded-full">{sponsorInquiries.filter(i => i.status === 'new').length}</Badge>}</TabsTrigger>
           <TabsTrigger value="config" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-config"><Settings className="w-3 h-3 mr-1" /> Config</TabsTrigger>
         </TabsList>
 
@@ -165,11 +164,6 @@ export default function AdminPage() {
           />
         </TabsContent>
 
-        {/* Inquiries */}
-        <TabsContent value="inquiries">
-          <SponsorInquiriesAdmin inquiries={sponsorInquiries} onRefresh={loadAll} />
-        </TabsContent>
-
         {/* Config */}
         <TabsContent value="config">
           <ConfigAdmin config={config} onRefresh={loadAll} />
@@ -184,6 +178,9 @@ function ChallengesAdmin({ challenges, onRefresh }) {
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const [milestoneStr, setMilestoneStr] = useState('');
+  const [uploadingMap, setUploadingMap] = useState(null);
+  const [uploadingMilestonePhoto, setUploadingMilestonePhoto] = useState(null);
+  const mapInputRef = useRef(null);
 
   const openCreate = () => {
     setForm({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true });
@@ -198,7 +195,8 @@ function ChallengesAdmin({ challenges, onRefresh }) {
       description: ch.description, 
       total_distance_km: String(ch.total_distance_km), 
       milestones: ch.milestones || [],
-      is_active: ch.is_active !== false
+      is_active: ch.is_active !== false,
+      route_map_url: ch.route_map_url || null
     });
     setMilestoneStr(ch.milestones?.map(m => `${m.distance_km}:${m.title}:${m.description || ''}`).join('\n') || '');
     setEditing(ch.id);
@@ -260,6 +258,40 @@ function ChallengesAdmin({ challenges, onRefresh }) {
     } catch { toast.error('Failed to delete'); }
   };
 
+  const handleUploadMap = async (challengeId, file) => {
+    setUploadingMap(challengeId);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post(`/challenges/${challengeId}/route-map`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Route map uploaded');
+      onRefresh();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to upload map');
+    } finally {
+      setUploadingMap(null);
+    }
+  };
+
+  const handleUploadMilestonePhoto = async (challengeId, milestoneIndex, file) => {
+    setUploadingMilestonePhoto(`${challengeId}-${milestoneIndex}`);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post(`/challenges/${challengeId}/milestones/${milestoneIndex}/image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast.success('Photo uploaded');
+      onRefresh();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to upload photo');
+    } finally {
+      setUploadingMilestonePhoto(null);
+    }
+  };
+
   const activeCount = challenges.filter(c => c.is_active !== false).length;
 
   return (
@@ -313,26 +345,87 @@ function ChallengesAdmin({ challenges, onRefresh }) {
             </DialogContent>
           </Dialog>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {challenges.map(ch => (
-            <div key={ch.id} className={`flex items-center justify-between p-3 rounded-xl ${ch.is_active !== false ? 'bg-stone-50' : 'bg-stone-100 opacity-60'}`} data-testid={`admin-challenge-${ch.id}`}>
-              <div className="flex items-center gap-3">
-                <Switch 
-                  checked={ch.is_active !== false} 
-                  onCheckedChange={() => handleToggleActive(ch)}
-                  data-testid={`toggle-challenge-${ch.id}`}
-                />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-stone-900">{ch.name}</p>
-                    {ch.is_active === false && <Badge className="bg-stone-200 text-stone-500 text-[10px] rounded-full">Inactive</Badge>}
+            <div key={ch.id} className={`rounded-xl ${ch.is_active !== false ? 'bg-stone-50' : 'bg-stone-100 opacity-60'}`} data-testid={`admin-challenge-${ch.id}`}>
+              <div className="flex items-center justify-between p-3">
+                <div className="flex items-center gap-3">
+                  <Switch 
+                    checked={ch.is_active !== false} 
+                    onCheckedChange={() => handleToggleActive(ch)}
+                    data-testid={`toggle-challenge-${ch.id}`}
+                  />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-stone-900">{ch.name}</p>
+                      {ch.is_active === false && <Badge className="bg-stone-200 text-stone-500 text-[10px] rounded-full">Inactive</Badge>}
+                    </div>
+                    <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones</p>
                   </div>
-                  <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones</p>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(ch)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
                 </div>
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => openEdit(ch)} className="rounded-full"><Pencil className="w-4 h-4 text-stone-400" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(ch.id)} className="rounded-full"><Trash2 className="w-4 h-4 text-red-400" /></Button>
+              {/* Route Map + Milestone Photos */}
+              <div className="px-3 pb-3 space-y-2">
+                {/* Route Map */}
+                <div className="flex items-center gap-3 p-2 rounded-lg bg-white border border-stone-100">
+                  <div className="shrink-0">
+                    {ch.route_map_url ? (
+                      <img src={ch.route_map_url} alt="Route map" className="w-12 h-12 rounded object-cover" />
+                    ) : (
+                      <div className="w-12 h-12 rounded bg-stone-100 flex items-center justify-center">
+                        <MapPin className="w-4 h-4 text-stone-300" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-stone-700">Route Map</p>
+                    <p className="text-[10px] text-stone-400">{ch.route_map_url ? 'Uploaded' : 'No map uploaded'}</p>
+                  </div>
+                  <label className="cursor-pointer">
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                      const f = e.target.files?.[0]; if (f) handleUploadMap(ch.id, f);
+                    }} />
+                    <Badge className="bg-orange-50 text-orange-700 hover:bg-orange-100 cursor-pointer text-[10px] rounded-full">
+                      {uploadingMap === ch.id ? 'Uploading...' : ch.route_map_url ? 'Replace' : 'Upload'}
+                    </Badge>
+                  </label>
+                </div>
+                {/* Milestone Photos */}
+                {ch.milestones?.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-stone-400 font-medium uppercase tracking-wider px-1">Milestone Photos</p>
+                    {ch.milestones.map((m, mi) => (
+                      <div key={mi} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-stone-100">
+                        <div className="flex gap-1 shrink-0">
+                          {(m.images || []).map((p, pi) => (
+                            <img key={pi} src={p} alt="" className="w-8 h-8 rounded object-cover" />
+                          ))}
+                          {(!m.images || m.images.length === 0) && (
+                            <div className="w-8 h-8 rounded bg-stone-100 flex items-center justify-center">
+                              <Mountain className="w-3 h-3 text-stone-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-stone-700 truncate">{m.title}</p>
+                          <p className="text-[10px] text-stone-400">{m.distance_km}km &middot; {(m.images || []).length} photo(s)</p>
+                        </div>
+                        <label className="cursor-pointer shrink-0">
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                            const f = e.target.files?.[0]; if (f) handleUploadMilestonePhoto(ch.id, mi, f);
+                          }} />
+                          <Badge className="bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer text-[10px] rounded-full">
+                            {uploadingMilestonePhoto === `${ch.id}-${mi}` ? '...' : '+ Photo'}
+                          </Badge>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}

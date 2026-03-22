@@ -203,7 +203,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-stone-900">
-              Habari, {user?.display_name || user?.full_name}!
+              Karibuni, {user?.display_name || user?.full_name}!
             </h1>
             <p className="text-stone-500 mt-1">
               {hasChallenge

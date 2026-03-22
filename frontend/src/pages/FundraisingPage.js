@@ -175,7 +175,7 @@ export default function FundraisingPage() {
       setPledgeTotal('');
       setPledgePerKm('');
       setShowSignup(false);
-      loadData();
+      navigate('/supporter-dashboard');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Signup failed');
     } finally {
@@ -199,7 +199,7 @@ export default function FundraisingPage() {
       setPledgePerKm('');
       setShowSignup(false);
       setShowLogin(false);
-      loadData();
+      navigate('/supporter-dashboard');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Login failed');
     } finally {
@@ -322,7 +322,7 @@ export default function FundraisingPage() {
                 <Button
                   onClick={handleContinue}
                   disabled={!hasAnyPledge() || submitting}
-                  className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-6 h-auto text-base disabled:opacity-50 transition-all hover:scale-[1.01]"
+                  className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-5 h-auto text-base disabled:opacity-50 transition-all hover:scale-[1.01] px-12 mx-auto block"
                   data-testid="pledge-continue-btn"
                 >
                   {submitting ? 'Processing...' : 'Continue'} <ArrowRight className="w-4 h-4 ml-2" />
@@ -392,7 +392,7 @@ export default function FundraisingPage() {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                        className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto px-10 mx-auto block"
                         data-testid="supporter-signup-submit"
                       >
                         {submitting ? 'Creating...' : 'Sign Up & Pledge'}
@@ -449,7 +449,7 @@ export default function FundraisingPage() {
                       <Button
                         type="submit"
                         disabled={submitting}
-                        className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                        className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto px-10 mx-auto block"
                         data-testid="supporter-login-submit"
                       >
                         {submitting ? 'Logging in...' : 'Log In & Pledge'}

@@ -946,19 +946,21 @@ async def supporter_dashboard(user=Depends(get_current_user)):
     
     pledges = await db.pledges.aggregate(pipeline).to_list(1000)
     
-    # Calculate progress and amounts
+    # Calculate progress and amounts (always show FULL route completion total)
     for p in pledges:
         challenge = p.get("challenge")
         total_km = p.get("walker_total_km", 0)
+        route_km = challenge.get("total_distance_km", 0) if challenge else 0
         progress_pct = 0
-        if challenge and challenge.get("total_distance_km", 0) > 0:
-            progress_pct = min(100, round((total_km / challenge["total_distance_km"]) * 100, 1))
+        if route_km > 0:
+            progress_pct = min(100, round((total_km / route_km) * 100, 1))
         p["walker_progress_pct"] = progress_pct
         
-        calculated = p.get("calculated_amount", 0)
-        if p.get("pledge_type") == "per_km" and p.get("pledge_per_km"):
-            calculated = round(p["pledge_per_km"] * total_km, 2)
-        p["calculated_amount"] = calculated
+        # Calculate FULL pledge amount based on complete route, not current progress
+        calculated = p.get("pledge_total", 0) or 0
+        if p.get("pledge_per_km") and route_km > 0:
+            calculated += round(p["pledge_per_km"] * route_km, 2)
+        p["calculated_amount"] = round(calculated, 2)
     
     return pledges
 
@@ -1059,13 +1061,14 @@ async def get_fundraising_page(walker_id: str):
                     tm_type = await db.walker_types.find_one({"id": tm["walker_type_id"]}, {"_id": 0})
                     if tm_type:
                         teammate_fees += tm_type.get("cost_usd", 0)
-    # Get pledges too
+    # Get pledges too - calculate based on FULL route distance, not current progress
     pledges = await db.pledges.find({"walker_id": walker_id}, {"_id": 0}).to_list(1000)
+    route_km = challenge.get("total_distance_km", 0) if challenge else 0
     pledge_total_value = 0
     for p in pledges:
-        if p["pledge_type"] == "per_km" and p.get("pledge_per_km"):
-            pledge_total_value += p["pledge_per_km"] * total_km
-        elif p.get("pledge_total"):
+        if p.get("pledge_type") in ("per_km", "combined") and p.get("pledge_per_km"):
+            pledge_total_value += p["pledge_per_km"] * route_km
+        if p.get("pledge_total"):
             pledge_total_value += p["pledge_total"]
         if p.get("supporter_user_id"):
             sup = await db.users.find_one({"id": p["supporter_user_id"]}, {"_id": 0, "password_hash": 0})
@@ -1135,7 +1138,7 @@ async def leaderboard_distance():
 
 @api_router.get("/leaderboards/raised")
 async def leaderboard_raised():
-    """Optimized leaderboard by funds raised using aggregation pipeline"""
+    """Leaderboard by total funds raised including pledges at full route completion"""
     pipeline = [
         {"$match": {"role": {"$ne": "admin"}}},
         {"$lookup": {
@@ -1144,8 +1147,48 @@ async def leaderboard_raised():
             "foreignField": "walker_id",
             "as": "sponsors"
         }},
+        {"$lookup": {
+            "from": "pledges",
+            "localField": "id",
+            "foreignField": "walker_id",
+            "as": "pledges"
+        }},
+        {"$lookup": {
+            "from": "challenges",
+            "localField": "challenge_id",
+            "foreignField": "id",
+            "as": "challenge_info"
+        }},
+        {"$lookup": {
+            "from": "walker_types",
+            "localField": "walker_type_id",
+            "foreignField": "id",
+            "as": "walker_type_info"
+        }},
         {"$addFields": {
-            "total_raised": {"$round": [{"$sum": "$sponsors.amount"}, 2]}
+            "route_km": {"$ifNull": [{"$arrayElemAt": ["$challenge_info.total_distance_km", 0]}, 0]},
+            "walker_fee": {"$cond": [
+                {"$and": ["$paid", {"$gt": [{"$size": "$walker_type_info"}, 0]}]},
+                {"$ifNull": [{"$arrayElemAt": ["$walker_type_info.cost_usd", 0]}, 0]},
+                0
+            ]},
+            "sponsor_total": {"$sum": "$sponsors.amount"},
+            "pledge_total": {"$sum": {
+                "$map": {
+                    "input": "$pledges",
+                    "as": "p",
+                    "in": {"$add": [
+                        {"$ifNull": ["$$p.pledge_total", 0]},
+                        {"$multiply": [
+                            {"$ifNull": ["$$p.pledge_per_km", 0]},
+                            {"$ifNull": [{"$arrayElemAt": ["$challenge_info.total_distance_km", 0]}, 0]}
+                        ]}
+                    ]}
+                }
+            }}
+        }},
+        {"$addFields": {
+            "total_raised": {"$round": [{"$add": ["$walker_fee", "$sponsor_total", "$pledge_total"]}, 2]}
         }},
         {"$match": {"total_raised": {"$gt": 0}}},
         {"$project": {

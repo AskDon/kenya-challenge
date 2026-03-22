@@ -173,7 +173,7 @@ export default function TeamPage() {
                 <Button
                   type="submit"
                   disabled={creating}
-                  className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                  className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto px-10 mx-auto block"
                   data-testid="team-create-btn"
                 >
                   <Plus className="w-4 h-4 mr-2" />
@@ -205,7 +205,7 @@ export default function TeamPage() {
                     </p>
                   )}
                 </div>
-                <Button onClick={handleLeave} variant="outline" className="rounded-full border-stone-200 text-red-600 hover:text-red-700 hover:border-red-200" data-testid="team-leave-btn">
+                <Button onClick={handleLeave} variant="ghost" className="rounded-full text-stone-400 hover:text-red-500 text-xs" data-testid="team-leave-btn">
                   Leave Team
                 </Button>
               </div>
