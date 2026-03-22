@@ -84,11 +84,6 @@ export default function LandingPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              <Link to="/leaderboard">
-                <Button variant="outline" className="rounded-full border-2 border-white/30 hover:border-white text-white bg-transparent px-6 py-6 h-auto text-base" data-testid="hero-leaderboard-btn">
-                  View Leaderboard
-                </Button>
-              </Link>
             </div>
           </div>
         </div>

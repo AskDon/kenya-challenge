@@ -1,7 +1,7 @@
 # The Kenya Challenge - Quick Start Guide
 
 ## 🚀 Live Preview
-**URL:** https://virtual-trek.preview.emergentagent.com
+**URL:** https://walking-kef.preview.emergentagent.com
 
 ## 🔐 Test Accounts
 

@@ -4,7 +4,7 @@
 
 **The Kenya Challenge** is a virtual walking challenge app for the Kenya Education Fund (KEF). Users walk real distances that are tracked virtually along iconic Kenyan routes, while raising funds through peer-to-peer fundraising.
 
-**Live Preview:** https://virtual-trek.preview.emergentagent.com
+**Live Preview:** https://walking-kef.preview.emergentagent.com
 
 ---
 

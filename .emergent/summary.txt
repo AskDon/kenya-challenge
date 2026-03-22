@@ -4,81 +4,68 @@
 The user wants to build The Kenya Challenge, a web and mobile-friendly application for the charity KEF (Kenya Education Fund). The application's goal is to facilitate virtual walking challenges along Kenyan routes combined with peer-to-peer fundraising.
 
 **PRODUCT REQUIREMENTS:**
-- **User Roles:** Walker, Teammate, Supporter (formerly Sponsor), Corporate Sponsor, and Admin.
-- **Authentication:** Email/password-based authentication.
-- **Challenges:** Admins can define challenges with names, descriptions, distances, and milestones.
-- **Walker Types:** Admins can define different tiers for walkers to join, each with a specific cost (e.g., Basic 5, Builder 7).
-- **Achievement Levels:** Admins can define fundraising milestones based on the total amount raised by a walker and their supporters, with corresponding swag.
-- **Teams:** Walkers can create teams and invite teammates via a unique link.
-- **Activity Logging:** Walkers can manually log their daily activity in steps or kilometers.
-- **Fundraising:** Each walker gets a unique public fundraising page to collect pledges from supporters. Supporters can pledge a flat amount or per kilometer.
-- **Leaderboards:** Public pages showing top individuals and teams by distance and funds raised.
-- **Admin Console:** A simple interface for admins to perform CRUD operations on challenges, walker types, achievement levels, and view summary statistics.
-- **Design:** A clean, mobile-first design inspired by the KEF website, using the The Kenya Challenge brand placeholders and KEF's color accents.
+The full product requirements have been captured in . A comprehensive list of outstanding fixes, bugs, and feature enhancements has been provided by the user and is stored in . This punchlist is the current source of truth for all work.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application has been developed using React, FastAPI, and MongoDB. The application includes authentication for walkers and admins, challenge and team management, manual activity logging, leaderboards, and a comprehensive admin panel for managing dynamic content like Challenges, Walker Types, and Achievement Levels. A multi-step onboarding wizard guides new users through selecting a challenge, walker type, and team. The UI has been customized with the KEF logo and brand colors.
+A full-stack application using React, FastAPI, and MongoDB has been built. It includes multi-role authentication (Admin, Walker, Supporter), a comprehensive admin panel for CRUD operations on dynamic content (Challenges, Walker Types, Sponsors, etc.), a multi-step walker onboarding flow, team creation/management, manual and placeholder Google Fit activity logging, leaderboards, and a complete public fundraising and supporter pledge workflow. The project's deployment readiness has been checked and all critical N+1 query issues have been resolved. Freelancer handoff documents have been created.
 
 **Last working item**:
-- **Last item agent was working:** Implementing the Public Fundraising Page and the complete Supporter workflow. This involves creating a public page for each walker where supporters can pledge funds, a signup/login flow for supporters, and a dashboard for supporters to view their pledges.
+- **Last item agent was working:** The user provided a large and detailed punch list of fixes and feature requests. The agent created  to track these items and had just begun implementing the first few UI changes on the . The user expressed frustration, urging the agent to proceed with the fixes.
 - **Status:** IN PROGRESS
 - **Agent Testing Done:** N
 - **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-- **Issue 1: Public Fundraising Page and Supporter Flow Implementation (P0)**
-  - **Description**: The backend APIs for handling pledges and supporter data have been created, but the corresponding frontend is missing. The entire user flow for a supporter finding a walker's page, making a pledge, and managing their pledges is not functional.
+The primary task is to work through all items on the user-provided punch list, which has been saved to . This list is now the definitive guide for all pending work.
+
+- **Issue 1: Implement Full User Punch List (P0)**
+  - **Description**: Address all items from , which includes bugs, UI/UX improvements, and feature changes across the entire application.
   - **Status**: IN PROGRESS
   - **Is recurring issue?**: N
   - **Should Test frontend/backend/both after fix?**: both
   - **Blocked on other issue**: None
 
 **Issues Detail**:
-- **Issue 1: Public Fundraising Page and Supporter Flow Implementation**
-  - **Attempted fixes:** The agent has successfully implemented the backend portion, including new database collections and API endpoints (, , etc.). The work was paused before starting the frontend implementation.
+- **Issue 1: Implement Full User Punch List**
+  - **Attempted fixes:** The agent created the  file and started working on the first items related to the home page UI before the session ended.
   - **Next debug checklist**:
-    1.  **Rewrite ** to serve as the public-facing fundraising page. It needs to fetch and display walker info, challenge progress, and a pledge form.
-    2.  **Create ** for logged-in supporters to view their active pledges.
-    3.  **Update  and ** to handle the redirection and linking of new/existing supporter accounts to their pledges after they submit the pledge form.
-    4.  **Add new routes** to  for the supporter dashboard and any other new pages.
-    5.  **Test the full end-to-end flow:** from a supporter landing on the public page to them seeing their pledge in their dashboard.
-  - **Why fix this issue and what will be achieved with the fix?**: This is a core fundraising feature of the application. Completing it will allow walkers to share their progress and collect financial support, which is central to the project's goal.
+    1.  **Read ** to get the full scope of work.
+    2.  **Start with the highest priority items from the punch list**:
+        - **Supporter Sign-Up (Fundraising Page)**: Redesign the pledge form to be the main, centered CTA.
+        - **Walker Functions (Team Page)**: Fix the logic to show either the Create Team form or the team management view.
+        - **Homepage**: Implement UI changes (remove button, add CTA).
+        - **Leaderboard**: Make walker names clickable links to their fundraising pages.
+    3.  Systematically work through the rest of the list, covering Backend, Admin, and other Sign-Up flow fixes.
+    4.  Update the freelancer handoff documents (, ) as the final step.
+  - **Why fix this issue and what will be achieved with the fix?**: This will address all of the user's outstanding feedback and bring the application to a state they consider complete and ready for hardening by a freelancer.
 
 **In progress Task List**:
-- **Task 1: Build Frontend for Supporter and Fundraising Flow (P0)**
-  - **Where to resume**: Start by creating or modifying the frontend files: , , , , and .
-  - **What will be achieved with this?**: A complete, functional fundraising loop for walkers and their supporters.
+- **Task 1: Implement User Punch List (P0)**
+  - **Where to resume**: Review  and continue implementing the changes, starting with the high-impact frontend fixes on the Fundraising Page, Team Page, and Landing Page.
+  - **What will be achieved with this?**: A fully functional application that meets all of the user's latest requirements.
   - **Status**: IN PROGRESS
   - **Should Test frontend/backend/both after fix?**: both
   - **Blocked on something**: No.
 
 **Upcoming and Future Tasks**
-- **Upcoming Tasks:**
-  - **P1: Implement Real Map Visualization**: Replace the current progress bar on the Dashboard and Fundraising pages with a visual map of the challenge route, showing the walker's current position.
-  - **P1: Walker Profile Picture**: Add the ability for walkers to upload an optional profile picture, which will be displayed on their public fundraising page.
-  - **P2: Automated Supporter Billing**: Implement the backend logic to automatically process pledges (e.g., send notifications or mark as due) once a walker completes their challenge.
-  - **P2: Shareable Achievement Certificates**: Design and implement a feature to generate classy, shareable certificates for walkers upon completing challenges or reaching achievement levels.
-
-- **Future Tasks:**
-  - Stripe payment integration.
-  - Magic link/passwordless login.
-  - Corporate Sponsor user flow.
-  - Integration with fitness trackers for automatic activity logging.
+All previously planned tasks are now superseded by the user's punch list. The sole focus is on completing the items in .
 
 **Completed work in this session**
-- **Full-stack Application**: Built the initial version of the app with a React frontend, FastAPI backend, and MongoDB.
-- **Branding and UI**: Integrated the KEF logo and brand colors () and improved typography.
-- **Data Model Refactor**: Decoupled Walker Types (entry fees) from Achievement Levels (fundraising milestones) across the entire stack.
-- **Onboarding Overhaul**: Implemented a multi-step onboarding wizard () for new users to select challenges, walker types, and teams post-signup.
-- **Dashboard Enhancements**: Updated the walker dashboard with corrected terminology (Challenge instead of Route), placeholders for future features (map), and links to the new Supporters page.
-- **Supporters Page**: Created a new page () and added it to the main navigation for walkers to manage their supporters.
-- **Bug Fixes**: Resolved clipboard functionality errors on the Dashboard and Team pages.
+- **Public Fundraising & Supporter Flow**: Implemented the complete frontend and backend for supporters to find walkers, make pledges, and view their pledges on a dedicated dashboard.
+- **Team Enhancements**: Implemented a two-part teammate signup flow and enhanced the Team Page to show leader controls, average progress, and member details.
+- **Social Sharing**: Added social media sharing buttons to the public fundraising page.
+- **Corporate Sponsors Feature**: Built a full CRUD system in the Admin panel for managing Sponsorship Levels and individual Corporate Sponsors with logo uploads. Sponsors are now displayed on the public landing page.
+- **Become a Sponsor Form**: Added a contact form to the landing page for sponsorship inquiries, with a corresponding viewing area in the Admin panel.
+- **Admin & Challenge Enhancements**: Added the ability for admins to toggle challenges as active/inactive.
+- **Deployment Health Check**: Ran deployment analysis and fixed multiple critical N+1 query performance issues and an ObjectId serialization bug, making the app deployment-ready.
+- **Integration Prep**: Added placeholder services for Google Fit and Stripe (the latter is now to be removed).
+- **Documentation**: Created  and  to assist with bringing on another developer.
 
 **Earlier issues found/mentioned but not fixed**
-- None. The agent has addressed all user-raised issues so far.
+All outstanding issues are documented in .
 
 **Known issue recurrence from previous fork**
 - N/A
@@ -88,80 +75,80 @@ A full-stack application has been developed using React, FastAPI, and MongoDB. T
 
 **Key Technical Concepts**
 - **Frontend**: React, React Router, Tailwind CSS, shadcn/ui, Axios.
-- **Backend**: FastAPI, MongoDB (pymongo), JWT for authentication.
-- **Architecture**: Monorepo with distinct frontend and backend services.
+- **Backend**: FastAPI, MongoDB (pymongo with aggregation pipelines), JWT for authentication, File uploads.
+- **Architecture**: Monorepo with a  directory in the backend for modular business logic (payments, fitness integration).
 
 **key DB schema**
-- **users**: Stores user data including auth details, role, selected challenge, and progress.
-- **challenges**: Defines the virtual walking routes with names, distances, and milestones.
-- **activities**: Logs manual distance/step entries for each user.
-- **teams**: Stores team information, including members and the team leader.
-- **walker_types**: Defines the different entry-level tiers for walkers with associated costs.
-- **achievement_levels**: Defines fundraising milestones and the corresponding rewards.
-- **pledges**: A new collection to store supporter pledges, linking supporters to walkers.
+- **users**: Walker/Admin/Supporter data, auth details, progress, team linkage, Google Fit tokens.
+- **challenges**: Virtual routes with name, distance, milestones, and an  flag.
+- **teams**: Team data, members, leader, invite codes.
+- **pledges**: Link supporters to walkers with pledge amounts/types.
+- **sponsorship_levels**: Admin-defined tiers (e.g., Gold, Silver) with constraints.
+- **corporate_sponsors**: Sponsors with logos, websites, linked to a level.
+- **sponsor_inquiries**: Leads from the Become a Sponsor form.
 
 **changes in tech stack**
-- None.
+- The user has requested to use **GiveButter** for payments via a simple embed, replacing the planned **Stripe** integration. All Stripe-related code should be removed.
 
 **All files of reference**
-- : The single source of truth for all backend API logic.
-- : To be rewritten as the public fundraising page.
-- : To be created for supporters.
-- : The existing multi-step new user wizard.
-- : The main view for logged-in walkers.
-- : The main React routing file.
+- **/app/PUNCHLIST.md**: The primary source of truth for all new work.
+- **/app/FREELANCER_HANDOFF.md**: To be updated after punch list is complete.
+- **/app/QUICK_START.md**: To be updated after punch list is complete.
+- : Needs a major redesign of the pledge form.
+- : Needs a complete logic overhaul.
+- : Needs several enhancements as per the punch list.
+- : Will require modifications to support punch list items (e.g., user deletion).
 
 **Areas that need refactoring**:
-- The old  collection might now be obsolete due to the new  collection and should be evaluated for removal to avoid confusion.
+- The  module should be cleared of Stripe code and adapted for GiveButter.
+-  and  require significant refactoring to meet the new UI/UX requirements from the punch list.
 
 **key api endpoints**
-- 
-- 
-- , 
-- 
-- 
-- **New Endpoints**:
-  - : Creates a new pledge from a supporter.
-  - : Retrieves data for the supporter's personal dashboard.
-  - : Links a new user account to a pending pledge.
+- All existing API endpoints remain relevant.
+- A new endpoint may be required for an Admin to delete a user account.
+- Stripe-related endpoints should be removed.
 
 **Critical Info for New Agent**
-- The project has undergone significant evolution from the initial brief. The current logic for user roles, onboarding, and the data model is highly specific, so refer to the latest user messages before making changes.
-- The immediate task is to build the frontend for the supporter pledge flow. The backend for this is already in place but has not been tested with a frontend. This is a top-priority feature.
-- User roles were clarified in message #135. Refer to this for an accurate understanding of Walkers, Teammates, Supporters, Sponsors, and Admins.
+- **The user's punch list, saved in , is your ONLY priority.** All other plans are superseded.
+- The user has expressed frustration. It's crucial to make steady, visible progress on the punch list items. Start with the UI/UX fixes which have the most impact.
+- **The payment provider is now GiveButter (simple embed), not Stripe.** Remove all preparatory code for Stripe.
+- After completing the punch list, you must update the  and  files to remove budget info, revise time estimates, and reflect all the new changes.
 
 **documents and test reports created in this job**
 - 
-- Multiple test reports in , such as .
+- 
+- 
+- Test reports from  to  in .
 
 **Last 10 User Messages and any pending HUMAN messages**
-- **User #344:** Requested a compilation of all previous summaries and to fork the project. (This initiated the current handover). **Status: Completed.**
-- **User #321:** Provided detailed requirements for the Public Fundraising Page and Supporter flow, which is the current work-in-progress. **Status: In Progress.**
-- **User #288:** Requested six specific improvements to the Walker Dashboard. **Status: Completed.**
-- **User #192:** Outlined the requirements for a two-part signup process and a new multi-step onboarding wizard. **Status: Completed.**
-- **User #135:** Clarified all user roles and requested the major refactor to separate Walker Types from Achievement Levels. **Status: Completed.**
-- **User #109:** Requested branding changes: using the KEF icon, increasing title size, and applying a navy blue brand color. **Status: Completed.**
-- **User #105:** Suggested an improvement for social sharing: creating a classy achievement certificate. **Status: Not Started (acknowledged and added to backlog).**
-- **User #56:** Gave the go-ahead to start the project. **Status: N/A.**
-- **User #5:** Provided initial setup choices, including admin credentials. **Status: Completed.**
+1.  **User #413 & #416**: Provided a comprehensive punch list of required changes and fixes, which is now the main task.
+2.  **User #419 & #422**: Expressed significant frustration with the agent's perceived lack of progress and being stuck.
+3.  **User #408**: Asked for a recommendation between GiveButter, PayPal, and Stripe. The user later chose GiveButter.
+4.  **User #363**: Asked the agent to run a deployment health check.
+5.  **User #352**: Asked for a full project summary, including how to go live, prebuilt logins, a page list, mobile app options, and a handoff guide for a freelancer.
+6.  **User #356**: Confirmed they wanted the freelancer handoff documents created.
+7.  **User #307**: Chose Google Fit for the step counter integration.
 
 **Project Health Check:**
-- **Broken**: The fundraising and supporter pledge functionality is broken as the frontend is not implemented.
-- **Mocked**: Payment processing and map visualizations are currently placeholders.
+- **Broken**: The  logic is incorrect, the  pledge form needs a complete redesign, the team search functionality is flawed, and the Leaderboard is not interactive.
+- **Mocked**: Payment processing (needs GiveButter embed), email notifications, and route map visualizations are not implemented.
 
 **3rd Party Integrations**
-- None.
+- **Google Fit**: Backend OAuth flow is implemented but requires admin configuration of client ID/secret to be enabled.
+- **GiveButter**: Requested as the new payment provider (simple embed). This needs to be implemented.
+- **Stripe**: To be removed.
 
 **Testing status**
 - **Testing agent used after significant changes**: YES
 - **Troubleshoot agent used after agent stuck in loop**: NO
-- **Test files created**: None. All testing has been performed by the .
-- **Known regressions**: None.
+- **Test files created**: None. All testing has been performed by subagents.
+- **Known regressions**: The  functionality appears to be a regression or was never correctly implemented to user's expectation.
 
 **Credentials to test flow:**
 - **Admin**:  / 
 - **Walker 1**:  / 
 - **Walker 2**:  / 
+- **Supporter**:  / 
 
 **What agent forgot to execute**
-- The agent was paused by the user before it could start the frontend implementation for the Public Fundraising Page and Supporter Dashboard. This is the main outstanding task.</analysis>
+The agent was interrupted while starting to work on the user's extensive punch list. The primary un-executed task is to complete all items documented in .</analysis>
