@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent } from '../components/ui/card';
@@ -10,7 +10,7 @@ import api from '../lib/api';
 import { toast } from 'sonner';
 import {
   Users, Eye, EyeOff, ArrowRight, ArrowLeft, Mountain, Check,
-  CreditCard, Heart, Copy, Award, X, UserPlus
+  CreditCard, Heart, Copy, Award, X, UserPlus, Camera, Plus
 } from 'lucide-react';
 
 const STEPS = ['Create Account', 'Setup'];
@@ -43,7 +43,10 @@ export default function TeammateSignupPage() {
   const [achievementLevels, setAchievementLevels] = useState([]);
   const [selectedChallenge, setSelectedChallenge] = useState('');
   const [selectedType, setSelectedType] = useState('');
-  const [supporters, setSupporters] = useState([{ name: '', email: '' }]);
+  const [supporters, setSupporters] = useState([{ name: '', email: '' }, { name: '', email: '' }, { name: '', email: '' }]);
+  const [profilePic, setProfilePic] = useState(null);
+  const [profilePicPreview, setProfilePicPreview] = useState(null);
+  const picInputRef = useRef(null);
 
   // Load team info
   useEffect(() => {
@@ -144,6 +147,14 @@ export default function TeammateSignupPage() {
     }
     setSubmitting(true);
     try {
+      // Upload profile pic if selected
+      if (profilePic) {
+        const formData = new FormData();
+        formData.append('file', profilePic);
+        await api.post('/auth/profile-picture', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        }).catch(() => {});
+      }
       // Save challenge selection
       await api.post('/users/select-challenge', {
         challenge_id: selectedChallenge,
@@ -464,120 +475,138 @@ export default function TeammateSignupPage() {
             </div>
           </div>
 
-          {/* Achievement Levels Table */}
+          {/* Optional Photo Upload */}
           <Card className="rounded-xl border border-stone-100 mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Camera className="w-5 h-5 text-orange-600" />
+                <h3 className="font-bold text-stone-900">Upload a Photo</h3>
+                <Badge variant="outline" className="rounded-full text-[10px] border-stone-200 text-stone-400 ml-auto">Optional</Badge>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-100 flex items-center justify-center border-2 border-stone-200 shrink-0 cursor-pointer hover:border-orange-300 transition-colors"
+                  onClick={() => picInputRef.current?.click()} data-testid="teammate-photo-upload">
+                  {profilePicPreview ? (
+                    <img src={profilePicPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-stone-300" />
+                  )}
+                </div>
+                <div>
+                  <Button type="button" variant="outline" size="sm" onClick={() => picInputRef.current?.click()}
+                    className="rounded-xl border-stone-200 text-stone-600 text-xs">
+                    {profilePicPreview ? 'Change Photo' : 'Choose Photo'}
+                  </Button>
+                  <p className="text-xs text-stone-400 mt-1">Appears on your fundraising page</p>
+                </div>
+                <input ref={picInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      setProfilePic(file);
+                      setProfilePicPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Achievement Levels - Informational Table */}
+          <Card className="rounded-xl border border-stone-100 bg-stone-50 mb-6">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Award className="w-5 h-5 text-orange-600" />
                 <h3 className="font-bold text-stone-900">Achievement Levels</h3>
+                <Badge variant="outline" className="rounded-full text-[10px] border-stone-200 text-stone-400 ml-auto">Info</Badge>
               </div>
               <p className="text-xs text-stone-500 mb-3">
-                Unlock achievements as your total raised grows (fee + teammates + supporters).
+                As your total amount raised grows (your fee + teammates + supporters), you unlock achievement levels and earn swag.
               </p>
-              <div className="space-y-2">
-                {achievementLevels.map((al) => (
-                  <div key={al.id} className="flex items-center justify-between p-2 rounded-lg bg-stone-50">
-                    <div>
-                      <p className="text-sm font-medium text-stone-900">{al.achievement}</p>
-                      <p className="text-xs text-stone-400">Swag: {al.swag}</p>
-                    </div>
-                    <Badge variant="outline" className="rounded-full text-xs border-stone-200">${al.total_amount_usd.toLocaleString()}</Badge>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-200">
+                      <th className="text-left py-1.5 px-2 text-xs text-stone-400 font-medium">Level</th>
+                      <th className="text-left py-1.5 px-2 text-xs text-stone-400 font-medium">Amount</th>
+                      <th className="text-left py-1.5 px-2 text-xs text-stone-400 font-medium">Swag</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {achievementLevels.map((al) => (
+                      <tr key={al.id} className="border-b border-stone-100 last:border-none">
+                        <td className="py-2 px-2 text-sm font-medium text-stone-700">{al.achievement}</td>
+                        <td className="py-2 px-2 text-sm text-stone-600">${al.total_amount_usd.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-xs text-stone-500">{al.swag}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </CardContent>
           </Card>
 
-          {/* Invite Supporters */}
+          {/* Invite Supporters & Share */}
           <Card className="rounded-xl border border-stone-100 mb-6">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-rose-500" />
-                  <h3 className="font-bold text-stone-900">Invite Supporters</h3>
-                </div>
-                <Badge variant="outline" className="rounded-full text-xs border-stone-200">Optional</Badge>
+              <div className="flex items-center gap-2 mb-3">
+                <UserPlus className="w-5 h-5 text-orange-600" />
+                <h3 className="font-bold text-stone-900">Spread the Word</h3>
+                <Badge variant="outline" className="rounded-full text-[10px] border-stone-200 text-stone-400 ml-auto">Optional</Badge>
               </div>
-              <div className="space-y-2 mb-4">
-                {supporters.map((s, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input
-                      value={s.name}
-                      onChange={(e) => {
-                        const copy = [...supporters];
-                        copy[i].name = e.target.value;
-                        setSupporters(copy);
-                      }}
-                      placeholder="Name"
-                      className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
-                      data-testid={`teammate-supporter-name-${i}`}
-                    />
-                    <Input
-                      type="email"
-                      value={s.email}
-                      onChange={(e) => {
-                        const copy = [...supporters];
-                        copy[i].email = e.target.value;
-                        setSupporters(copy);
-                      }}
-                      placeholder="Email"
-                      className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
-                      data-testid={`teammate-supporter-email-${i}`}
-                    />
-                    {supporters.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSupporters(supporters.filter((_, j) => j !== i))}
-                        className="text-stone-300 hover:text-red-500 shrink-0"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setSupporters([...supporters, { name: '', email: '' }])}
-                className="w-full rounded-xl border-stone-200 text-stone-600"
-                data-testid="teammate-add-supporter"
-              >
-                <UserPlus className="w-4 h-4 mr-2" /> Add More Supporters
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Fundraising Link */}
-          {user && (
-            <Card className="bg-stone-900 rounded-xl border-none mb-6">
-              <CardContent className="p-4 text-center">
-                <Heart className="w-6 h-6 text-orange-400 mx-auto mb-2" />
-                <p className="text-white text-sm font-bold mb-1">Your Fundraising Page</p>
-                <p className="text-stone-400 text-xs mb-3">Share this link with supporters</p>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    value={`${window.location.origin}/fundraise/${user.id}`}
-                    className="rounded-xl bg-stone-800 border-stone-700 text-stone-300 text-xs h-10"
-                    data-testid="teammate-fundraise-link"
-                  />
-                  <Button
-                    onClick={() => {
-                      navigator.clipboard.writeText(`${window.location.origin}/fundraise/${user.id}`);
-                      toast.success('Link copied!');
-                    }}
-                    className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white shrink-0"
-                    data-testid="teammate-copy-link"
-                  >
-                    <Copy className="w-4 h-4" />
+              <p className="text-xs text-stone-500 mb-4">Invite supporters and share your fundraising page to get more pledges.</p>
+              
+              {/* Invite by email */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-stone-700 text-xs font-bold">Invite Supporters by Email</Label>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setSupporters([...supporters, { name: '', email: '' }])} className="text-orange-600 text-xs" data-testid="teammate-add-supporter">
+                    <Plus className="w-3 h-3 mr-1" /> Add More
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="space-y-2">
+                  {supporters.map((s, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input value={s.name} onChange={(e) => { const copy = [...supporters]; copy[i].name = e.target.value; setSupporters(copy); }}
+                        placeholder="Name" className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1" data-testid={`teammate-supporter-name-${i}`} />
+                      <Input type="email" value={s.email} onChange={(e) => { const copy = [...supporters]; copy[i].email = e.target.value; setSupporters(copy); }}
+                        placeholder="Email" className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1" data-testid={`teammate-supporter-email-${i}`} />
+                      {supporters.length > 1 && (
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setSupporters(supporters.filter((_, j) => j !== i))} className="text-stone-300 hover:text-red-500 shrink-0">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-stone-100" />
+                <span className="text-xs text-stone-400 font-medium">or share your link</span>
+                <div className="flex-1 h-px bg-stone-100" />
+              </div>
+
+              {/* Share Link */}
+              {user && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Heart className="w-4 h-4 text-rose-500" />
+                    <Label className="text-stone-700 text-xs font-bold">Your Fundraising Page</Label>
+                  </div>
+                  <div className="flex gap-2">
+                    <Input readOnly value={`${window.location.origin}/fundraise/${user.id}`}
+                      className="rounded-xl bg-stone-50 border-stone-200 text-stone-600 text-xs h-10" data-testid="teammate-fundraise-link" />
+                    <Button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/fundraise/${user.id}`); toast.success('Link copied!'); }}
+                      className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white shrink-0" data-testid="teammate-copy-link">
+                      <Copy className="w-4 h-4 mr-1" /> Copy
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Pay Button */}
           <Card className="bg-white rounded-xl border border-stone-100 mb-4">

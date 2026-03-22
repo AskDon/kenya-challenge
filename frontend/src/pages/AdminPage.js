@@ -635,7 +635,14 @@ function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
   };
 
   // Sponsor CRUD
-  const openCreateSponsor = () => { setSponsorForm({ name: '', level_id: levels[0]?.id || '', website_url: '' }); setEditingSponsor(null); setSponsorOpen(true); };
+  const getSponsorCount = (levelId) => sponsors.filter(s => s.level_id === levelId).length;
+  const getAvailableLevel = () => {
+    for (const l of levels) {
+      if (!l.max_sponsors || getSponsorCount(l.id) < l.max_sponsors) return l.id;
+    }
+    return levels[0]?.id || '';
+  };
+  const openCreateSponsor = () => { setSponsorForm({ name: '', level_id: getAvailableLevel(), website_url: '' }); setEditingSponsor(null); setSponsorOpen(true); };
   const openEditSponsor = (s) => { setSponsorForm({ name: s.name, level_id: s.level_id, website_url: s.website_url || '' }); setEditingSponsor(s.id); setSponsorOpen(true); };
 
   const handleSaveSponsor = async () => {
@@ -773,9 +780,15 @@ function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
                         <SelectValue placeholder="Select level" />
                       </SelectTrigger>
                       <SelectContent>
-                        {levels.map(l => (
-                          <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                        ))}
+                        {levels.map(l => {
+                          const count = getSponsorCount(l.id);
+                          const full = l.max_sponsors && count >= l.max_sponsors;
+                          return (
+                            <SelectItem key={l.id} value={l.id} disabled={full && !editingSponsor}>
+                              {l.name} ({count}/{l.max_sponsors || '\u221e'}) {full ? '- FULL' : ''}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -817,34 +830,25 @@ function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files[0]) handleUploadLogo(s.id, e.target.files[0]);
-                        e.target.value = '';
-                      }}
-                      data-testid={`upload-input-${s.id}`}
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const input = document.querySelector(`[data-testid="upload-input-${s.id}"]`);
-                        if (input) input.click();
-                      }}
-                      disabled={uploading === s.id}
-                      className="rounded-full"
-                      data-testid={`upload-logo-${s.id}`}
-                    >
-                      {uploading === s.id ? (
-                        <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Upload className="w-4 h-4 text-stone-400" />
-                      )}
-                    </Button>
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files[0]) handleUploadLogo(s.id, e.target.files[0]);
+                          e.target.value = '';
+                        }}
+                        data-testid={`upload-input-${s.id}`}
+                      />
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-stone-100 transition-colors" data-testid={`upload-logo-${s.id}`}>
+                        {uploading === s.id ? (
+                          <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4 text-stone-400" />
+                        )}
+                      </div>
+                    </label>
                     {s.logo_url && (
                       <Button variant="ghost" size="icon" onClick={() => handleDeleteLogo(s.id)} className="rounded-full" data-testid={`delete-logo-${s.id}`}>
                         <X className="w-4 h-4 text-stone-400" />
