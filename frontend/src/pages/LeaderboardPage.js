@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
@@ -34,22 +35,28 @@ export default function LeaderboardPage() {
     return i + 1;
   };
 
-  const LeaderRow = ({ rank, name, country, value, unit, userId }) => (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50 hover:bg-stone-100 transition-colors" data-testid={`leader-row-${rank}`}>
-      <div className="flex items-center gap-3">
-        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
-          rank < 3 ? 'bg-orange-100 text-orange-700' : 'bg-stone-200 text-stone-600'
-        }`}>
-          {rank < 3 ? getMedal(rank) : rank + 1}
+  const LeaderRow = ({ rank, name, country, value, unit, userId }) => {
+    const content = (
+      <div className={`flex items-center justify-between p-3 rounded-xl bg-stone-50 hover:bg-stone-100 transition-colors ${userId ? 'cursor-pointer' : ''}`} data-testid={`leader-row-${rank}`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${
+            rank < 3 ? 'bg-orange-100 text-orange-700' : 'bg-stone-200 text-stone-600'
+          }`}>
+            {rank < 3 ? getMedal(rank) : rank + 1}
+          </div>
+          <div>
+            <p className={`text-sm font-medium ${userId ? 'text-orange-700 hover:underline' : 'text-stone-900'}`}>{name}</p>
+            {country && <p className="text-xs text-stone-400">{country}</p>}
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-medium text-stone-900">{name}</p>
-          {country && <p className="text-xs text-stone-400">{country}</p>}
-        </div>
+        <p className="text-sm font-bold text-stone-900">{value} {unit}</p>
       </div>
-      <p className="text-sm font-bold text-stone-900">{value} {unit}</p>
-    </div>
-  );
+    );
+    if (userId) {
+      return <Link to={`/fundraise/${userId}`} data-testid={`leader-link-${userId}`}>{content}</Link>;
+    }
+    return content;
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -90,7 +97,7 @@ export default function LeaderboardPage() {
               ) : (
                 <div className="space-y-2">
                   {distLeaders.map((l, i) => (
-                    <LeaderRow key={l.user_id} rank={i} name={l.display_name} country={l.country} value={l.total_km} unit="km" />
+                    <LeaderRow key={l.user_id} rank={i} name={l.display_name} country={l.country} value={l.total_km} unit="km" userId={l.user_id} />
                   ))}
                 </div>
               )}
@@ -107,7 +114,7 @@ export default function LeaderboardPage() {
               ) : (
                 <div className="space-y-2">
                   {raisedLeaders.map((l, i) => (
-                    <LeaderRow key={l.user_id} rank={i} name={l.display_name} country={l.country} value={`$${l.total_raised}`} unit="" />
+                    <LeaderRow key={l.user_id} rank={i} name={l.display_name} country={l.country} value={`$${l.total_raised}`} unit="" userId={l.user_id} />
                   ))}
                 </div>
               )}

@@ -1,3 +1,13 @@
+/* Remove number input arrows */
+input[type="number"].no-arrows::-webkit-outer-spin-button,
+input[type="number"].no-arrows::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"].no-arrows {
+  -moz-appearance: textfield;
+}
+
 /* Custom utility styles */
 .container-app {
     max-width: 80rem;

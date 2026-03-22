@@ -161,7 +161,7 @@ class SponsorInquiry(BaseModel):
     message: Optional[str] = ""
 
 class PledgeCreate(BaseModel):
-    pledge_type: str  # "per_km" or "total"
+    pledge_type: str  # "per_km", "total", or "combined"
     pledge_per_km: Optional[float] = None
     pledge_total: Optional[float] = None
 
@@ -170,7 +170,7 @@ class SupporterSignup(BaseModel):
     email: str
     password: str
     walker_id: str
-    pledge_type: str  # "per_km" or "total"
+    pledge_type: str  # "per_km", "total", or "combined"
     pledge_per_km: Optional[float] = None
     pledge_total: Optional[float] = None
 
@@ -259,7 +259,7 @@ async def login(req: LoginRequest):
 
 @api_router.get("/auth/me")
 async def get_me(user=Depends(get_current_user)):
-    user_resp = {k: v for k, v in user.items() if k != "password_hash"}
+    user_resp = {k: v for k, v in user.items() if k not in ("password_hash", "_id")}
     return user_resp
 
 @api_router.put("/auth/profile")
@@ -269,6 +269,20 @@ async def update_profile(req: ProfileUpdate, user=Depends(get_current_user)):
         await db.users.update_one({"id": user["id"]}, {"$set": updates})
     updated = await db.users.find_one({"id": user["id"]}, {"_id": 0, "password_hash": 0})
     return updated
+
+@api_router.post("/auth/profile-picture")
+async def upload_profile_picture(file: UploadFile = File(...), user=Depends(get_current_user)):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = f"profile_{user['id']}_{uuid.uuid4().hex[:8]}.{ext}"
+    filepath = UPLOADS_DIR / filename
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+    profile_picture_url = f"/api/uploads/{filename}"
+    await db.users.update_one({"id": user["id"]}, {"$set": {"profile_picture_url": profile_picture_url}})
+    return {"profile_picture_url": profile_picture_url}
 
 
 # ==========================================
@@ -663,18 +677,19 @@ async def get_my_team(user=Depends(get_current_user)):
             "foreignField": "id",
             "as": "challenge_arr"
         }},
-        {"$project": {
-            "_id": 0,
-            "password_hash": 0,
-            "id": 1,
-            "full_name": 1,
-            "display_name": 1,
-            "email": 1,
-            "challenge_id": 1,
+        {"$addFields": {
             "total_km": {"$round": [{"$sum": "$activities.km"}, 2]},
             "total_steps": {"$sum": "$activities.steps"},
             "total_raised": {"$round": [{"$sum": "$sponsors.amount"}, 2]},
             "challenge": {"$arrayElemAt": ["$challenge_arr", 0]}
+        }},
+        {"$project": {
+            "_id": 0,
+            "password_hash": 0,
+            "activities": 0,
+            "sponsors": 0,
+            "challenge_arr": 0,
+            "challenge._id": 0
         }}
     ]
     
@@ -790,6 +805,16 @@ async def create_pledge(walker_id: str, req: PledgeCreate, authorization: Option
         except JWTError:
             pass
 
+    # Calculate amount based on pledge type
+    calculated_amount = 0
+    if req.pledge_type == "total":
+        calculated_amount = req.pledge_total or 0
+    elif req.pledge_type == "combined":
+        calculated_amount = (req.pledge_total or 0)
+        challenge = await db.challenges.find_one({"id": walker.get("challenge_id")})
+        if challenge and req.pledge_per_km:
+            calculated_amount += req.pledge_per_km * challenge.get("total_distance_km", 0)
+
     pledge = {
         "id": str(uuid.uuid4()),
         "walker_id": walker_id,
@@ -798,7 +823,7 @@ async def create_pledge(walker_id: str, req: PledgeCreate, authorization: Option
         "pledge_type": req.pledge_type,
         "pledge_per_km": req.pledge_per_km,
         "pledge_total": req.pledge_total,
-        "calculated_amount": req.pledge_total if req.pledge_type == "total" else 0,
+        "calculated_amount": round(calculated_amount, 2),
         "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -838,6 +863,17 @@ async def supporter_signup(req: SupporterSignup):
     token = create_token(user["id"], user["role"])
 
     walker = await db.users.find_one({"id": req.walker_id})
+    # Calculate amount based on pledge type
+    calc_amount = 0
+    if req.pledge_type == "total":
+        calc_amount = req.pledge_total or 0
+    elif req.pledge_type == "combined":
+        calc_amount = (req.pledge_total or 0)
+        if walker:
+            challenge = await db.challenges.find_one({"id": walker.get("challenge_id")})
+            if challenge and req.pledge_per_km:
+                calc_amount += req.pledge_per_km * challenge.get("total_distance_km", 0)
+
     pledge = {
         "id": str(uuid.uuid4()),
         "walker_id": req.walker_id,
@@ -846,7 +882,7 @@ async def supporter_signup(req: SupporterSignup):
         "pledge_type": req.pledge_type,
         "pledge_per_km": req.pledge_per_km,
         "pledge_total": req.pledge_total,
-        "calculated_amount": req.pledge_total if req.pledge_type == "total" else 0,
+        "calculated_amount": round(calc_amount, 2),
         "status": "active",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -1267,6 +1303,64 @@ async def update_config(req: ConfigUpdate, user=Depends(get_admin_user)):
 async def admin_list_users(user=Depends(get_admin_user)):
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(10000)
     return users
+
+@api_router.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, user=Depends(get_admin_user)):
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.get("role") == "admin":
+        raise HTTPException(status_code=400, detail="Cannot delete admin accounts")
+    # Remove user from team if they're in one
+    if target.get("team_id"):
+        # If they're a team creator, delete the team and unset team_id for all members
+        team = await db.teams.find_one({"creator_id": user_id})
+        if team:
+            await db.users.update_many({"team_id": team["id"]}, {"$set": {"team_id": None}})
+            await db.teams.delete_one({"id": team["id"]})
+    # Delete user's activities, pledges, sponsors, invites
+    await db.activities.delete_many({"user_id": user_id})
+    await db.pledges.delete_many({"$or": [{"walker_id": user_id}, {"supporter_user_id": user_id}]})
+    await db.sponsors.delete_many({"walker_id": user_id})
+    await db.supporter_invites.delete_many({"walker_id": user_id})
+    await db.users.delete_one({"id": user_id})
+    return {"message": "User and associated data deleted"}
+
+@api_router.get("/admin/stats/by-challenge")
+async def admin_stats_by_challenge(user=Depends(get_admin_user)):
+    """Get stats broken down by challenge: walkers, teams, pledged"""
+    challenges = await db.challenges.find({}, {"_id": 0}).to_list(100)
+    result = []
+    for ch in challenges:
+        # Count walkers on this challenge
+        walker_count = await db.users.count_documents({"challenge_id": ch["id"], "role": {"$ne": "admin"}})
+        # Count teams on this challenge
+        team_count = await db.teams.count_documents({"challenge_id": ch["id"]})
+        # Calculate total pledged for walkers on this challenge
+        walker_ids = [u["id"] async for u in db.users.find({"challenge_id": ch["id"]}, {"id": 1, "_id": 0})]
+        pledge_total = 0
+        if walker_ids:
+            pledge_stats = await db.pledges.aggregate([
+                {"$match": {"walker_id": {"$in": walker_ids}}},
+                {"$group": {"_id": None, "total": {"$sum": {"$ifNull": ["$pledge_total", 0]}}}}
+            ]).to_list(1)
+            if pledge_stats:
+                pledge_total = round(pledge_stats[0]["total"], 2)
+            sponsor_stats = await db.sponsors.aggregate([
+                {"$match": {"walker_id": {"$in": walker_ids}}},
+                {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+            ]).to_list(1)
+            if sponsor_stats:
+                pledge_total += round(sponsor_stats[0]["total"], 2)
+        result.append({
+            "challenge_id": ch["id"],
+            "challenge_name": ch["name"],
+            "is_active": ch.get("is_active", True),
+            "walkers": walker_count,
+            "teams": team_count,
+            "pledged": round(pledge_total, 2),
+        })
+    return result
 
 
 # ==========================================

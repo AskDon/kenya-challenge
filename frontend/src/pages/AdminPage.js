@@ -15,6 +15,7 @@ import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2,
 
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
+  const [challengeStats, setChallengeStats] = useState([]);
   const [challenges, setChallenges] = useState([]);
   const [walkerTypes, setWalkerTypes] = useState([]);
   const [achievementLevels, setAchievementLevels] = useState([]);
@@ -36,7 +37,8 @@ export default function AdminPage() {
       api.get('/corporate-sponsors').catch(() => ({ data: [] })),
       api.get('/sponsorship-levels').catch(() => ({ data: [] })),
       api.get('/sponsor-inquiries').catch(() => ({ data: [] })),
-    ]).then(([s, c, wt, al, u, cfg, cs, sl, si]) => {
+      api.get('/admin/stats/by-challenge').catch(() => ({ data: [] })),
+    ]).then(([s, c, wt, al, u, cfg, cs, sl, si, chs]) => {
       setStats(s.data);
       setChallenges(c.data);
       setWalkerTypes(wt.data);
@@ -46,6 +48,7 @@ export default function AdminPage() {
       setCorpSponsors(cs.data);
       setSponsorshipLevels(sl.data);
       setSponsorInquiries(si.data);
+      setChallengeStats(chs.data);
     }).catch(() => toast.error('Failed to load admin data'))
       .finally(() => setLoading(false));
   };
@@ -94,6 +97,43 @@ export default function AdminPage() {
               </Card>
             ))}
           </div>
+
+          {/* Stats by Challenge */}
+          {challengeStats.length > 0 && (
+            <Card className="bg-white rounded-2xl border border-stone-100 mt-6" data-testid="admin-stats-by-challenge">
+              <CardContent className="p-6">
+                <h3 className="text-lg font-bold text-stone-900 mb-4">Stats by Challenge</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-stone-100">
+                        <th className="text-left py-2 px-3 text-xs text-stone-400 font-medium uppercase">Challenge</th>
+                        <th className="text-left py-2 px-3 text-xs text-stone-400 font-medium uppercase">Status</th>
+                        <th className="text-right py-2 px-3 text-xs text-stone-400 font-medium uppercase">Walkers</th>
+                        <th className="text-right py-2 px-3 text-xs text-stone-400 font-medium uppercase">Teams</th>
+                        <th className="text-right py-2 px-3 text-xs text-stone-400 font-medium uppercase">Pledged</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {challengeStats.map(cs => (
+                        <tr key={cs.challenge_id} className="border-b border-stone-50">
+                          <td className="py-2.5 px-3 font-medium text-stone-900">{cs.challenge_name}</td>
+                          <td className="py-2.5 px-3">
+                            <Badge className={`rounded-full text-xs ${cs.is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
+                              {cs.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </td>
+                          <td className="py-2.5 px-3 text-right text-stone-600">{cs.walkers}</td>
+                          <td className="py-2.5 px-3 text-right text-stone-600">{cs.teams}</td>
+                          <td className="py-2.5 px-3 text-right font-medium text-stone-900">${cs.pledged}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Challenges */}
@@ -113,25 +153,7 @@ export default function AdminPage() {
 
         {/* Users */}
         <TabsContent value="users">
-          <Card className="bg-white rounded-2xl border border-stone-100">
-            <CardContent className="p-6">
-              <h3 className="text-lg font-bold text-stone-900 mb-4">All Users ({users.length})</h3>
-              <div className="space-y-2">
-                {users.map(u => (
-                  <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-user-${u.id}`}>
-                    <div>
-                      <p className="text-sm font-medium text-stone-900">{u.display_name || u.first_name}</p>
-                      <p className="text-xs text-stone-400">{u.email}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Badge className={`rounded-full text-xs ${u.role === 'admin' ? 'bg-orange-100 text-orange-700' : 'bg-stone-100 text-stone-600'}`}>{u.role}</Badge>
-                      {u.paid && <Badge className="rounded-full text-xs bg-emerald-100 text-emerald-700">paid</Badge>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <UsersAdmin users={users} onRefresh={loadAll} />
         </TabsContent>
 
         {/* Corporate */}
@@ -844,6 +866,59 @@ function SponsorInquiriesAdmin({ inquiries, onRefresh }) {
             })}
           </div>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
+function UsersAdmin({ users, onRefresh }) {
+  const [deleting, setDeleting] = useState(null);
+
+  const handleDelete = async (userId, displayName) => {
+    if (!window.confirm(`Delete user "${displayName}"? This will also remove their activities, pledges, and team data.`)) return;
+    setDeleting(userId);
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      toast.success('User deleted');
+      onRefresh();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to delete user');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  return (
+    <Card className="bg-white rounded-2xl border border-stone-100">
+      <CardContent className="p-6">
+        <h3 className="text-lg font-bold text-stone-900 mb-4">All Users ({users.length})</h3>
+        <div className="space-y-2">
+          {users.map(u => (
+            <div key={u.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`admin-user-${u.id}`}>
+              <div>
+                <p className="text-sm font-medium text-stone-900">{u.display_name || u.full_name}</p>
+                <p className="text-xs text-stone-400">{u.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge className={`rounded-full text-xs ${u.role === 'admin' ? 'bg-orange-100 text-orange-700' : u.role === 'supporter' ? 'bg-blue-100 text-blue-700' : 'bg-stone-100 text-stone-600'}`}>{u.role}</Badge>
+                {u.paid && <Badge className="rounded-full text-xs bg-emerald-100 text-emerald-700">paid</Badge>}
+                {u.role !== 'admin' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(u.id, u.display_name || u.full_name)}
+                    disabled={deleting === u.id}
+                    className="text-red-400 hover:text-red-600 h-7 w-7 p-0"
+                    data-testid={`admin-delete-user-${u.id}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   );

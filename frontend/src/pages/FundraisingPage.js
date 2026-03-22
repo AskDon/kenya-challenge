@@ -9,7 +9,7 @@ import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { Heart, MapPin, Footprints, Users, Mountain, ArrowRight, Flag, DollarSign, Eye, EyeOff } from 'lucide-react';
+import { Heart, MapPin, Footprints, Users, Mountain, ArrowRight, Flag, DollarSign, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import ShareButtons from '../components/ShareButtons';
 
 function RouteMap({ challenge, totalKm, progressPct, milestones }) {
@@ -78,10 +78,9 @@ export default function FundraisingPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Pledge state
-  const [pledgeType, setPledgeType] = useState('');
-  const [pledgePerKm, setPledgePerKm] = useState('');
+  // Pledge state - both fields always visible
   const [pledgeTotal, setPledgeTotal] = useState('');
+  const [pledgePerKm, setPledgePerKm] = useState('');
   const [showSignup, setShowSignup] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
 
@@ -100,16 +99,33 @@ export default function FundraisingPage() {
 
   useEffect(() => { loadData(); }, [userId]);
 
+  // Compute combined pledge total
+  const computePledgeTotal = () => {
+    let total = 0;
+    const totalVal = parseFloat(pledgeTotal) || 0;
+    const perKmVal = parseFloat(pledgePerKm) || 0;
+    const routeKm = data?.challenge?.total_distance_km || 0;
+    total = totalVal + (perKmVal * routeKm);
+    return total;
+  };
+
+  const hasAnyPledge = () => {
+    return (parseFloat(pledgeTotal) > 0) || (parseFloat(pledgePerKm) > 0);
+  };
+
+  const getPledgeType = () => {
+    const hasTotal = parseFloat(pledgeTotal) > 0;
+    const hasPerKm = parseFloat(pledgePerKm) > 0;
+    if (hasTotal && hasPerKm) return 'combined';
+    if (hasPerKm) return 'per_km';
+    return 'total';
+  };
+
   const handleContinue = () => {
-    if (pledgeType === 'per_km' && (!pledgePerKm || parseFloat(pledgePerKm) <= 0)) {
-      toast.error('Please enter an amount per km');
+    if (!hasAnyPledge()) {
+      toast.error('Please enter at least one pledge amount');
       return;
     }
-    if (pledgeType === 'total' && (!pledgeTotal || parseFloat(pledgeTotal) <= 0)) {
-      toast.error('Please enter a pledge amount');
-      return;
-    }
-    // If already logged in, create pledge directly
     if (user) {
       createPledgeForLoggedInUser();
     } else {
@@ -121,14 +137,13 @@ export default function FundraisingPage() {
     setSubmitting(true);
     try {
       await api.post(`/pledges/${userId}`, {
-        pledge_type: pledgeType,
-        pledge_per_km: pledgeType === 'per_km' ? parseFloat(pledgePerKm) : null,
-        pledge_total: pledgeType === 'total' ? parseFloat(pledgeTotal) : null,
+        pledge_type: getPledgeType(),
+        pledge_per_km: parseFloat(pledgePerKm) || null,
+        pledge_total: parseFloat(pledgeTotal) || null,
       });
       toast.success('Pledge created! Thank you for your support!');
-      setPledgeType('');
-      setPledgePerKm('');
       setPledgeTotal('');
+      setPledgePerKm('');
       setShowSignup(false);
       loadData();
     } catch (err) {
@@ -151,13 +166,14 @@ export default function FundraisingPage() {
         email: signupForm.email,
         password: signupForm.password,
         walker_id: userId,
-        pledge_type: pledgeType,
-        pledge_per_km: pledgeType === 'per_km' ? parseFloat(pledgePerKm) : null,
-        pledge_total: pledgeType === 'total' ? parseFloat(pledgeTotal) : null,
+        pledge_type: getPledgeType(),
+        pledge_per_km: parseFloat(pledgePerKm) || null,
+        pledge_total: parseFloat(pledgeTotal) || null,
       });
       await login(res.data.token);
       toast.success('Welcome! Your pledge has been recorded.');
-      setPledgeType('');
+      setPledgeTotal('');
+      setPledgePerKm('');
       setShowSignup(false);
       loadData();
     } catch (err) {
@@ -173,14 +189,14 @@ export default function FundraisingPage() {
     try {
       const res = await api.post('/auth/login', loginForm);
       await login(res.data.token);
-      // Now create pledge
       await api.post(`/pledges/${userId}`, {
-        pledge_type: pledgeType,
-        pledge_per_km: pledgeType === 'per_km' ? parseFloat(pledgePerKm) : null,
-        pledge_total: pledgeType === 'total' ? parseFloat(pledgeTotal) : null,
+        pledge_type: getPledgeType(),
+        pledge_per_km: parseFloat(pledgePerKm) || null,
+        pledge_total: parseFloat(pledgeTotal) || null,
       });
       toast.success('Pledge recorded! Thank you for your support!');
-      setPledgeType('');
+      setPledgeTotal('');
+      setPledgePerKm('');
       setShowSignup(false);
       setShowLogin(false);
       loadData();
@@ -204,7 +220,7 @@ export default function FundraisingPage() {
   const { walker, challenge, total_km, total_steps, total_raised, sponsors, team, pledges } = data;
   const currentAchievement = data.current_achievement;
   const progressPct = challenge ? Math.min(100, (total_km / challenge.total_distance_km) * 100) : 0;
-  const estimatedPerKm = pledgePerKm && challenge ? (parseFloat(pledgePerKm) * challenge.total_distance_km).toFixed(2) : null;
+  const calculatedTotal = computePledgeTotal();
 
   return (
     <div className="min-h-screen bg-stone-50" data-testid="fundraising-page">
@@ -214,7 +230,7 @@ export default function FundraisingPage() {
           <div className="w-16 h-16 rounded-full bg-orange-600 flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl font-bold text-white">{walker.display_name?.[0] || walker.full_name?.[0]}</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1" data-testid="walker-name-header">
             {walker.display_name || walker.full_name}
           </h1>
           <p className="text-stone-400 text-sm">is walking for Kenya Education Fund</p>
@@ -226,396 +242,394 @@ export default function FundraisingPage() {
         </div>
       </div>
 
-      <div className="container-app py-8 md:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Progress + Stats */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-white rounded-2xl border border-stone-100">
-                <CardContent className="p-5 text-center">
-                  <MapPin className="w-5 h-5 text-orange-600 mx-auto mb-2" />
-                  <p className="text-xl font-bold text-stone-900">{total_km} km</p>
-                  <p className="text-xs text-stone-400">walked</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white rounded-2xl border border-stone-100">
-                <CardContent className="p-5 text-center">
-                  <Footprints className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
-                  <p className="text-xl font-bold text-stone-900">{total_steps.toLocaleString()}</p>
-                  <p className="text-xs text-stone-400">steps</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white rounded-2xl border border-stone-100">
-                <CardContent className="p-5 text-center">
-                  <Heart className="w-5 h-5 text-rose-600 mx-auto mb-2" />
-                  <p className="text-xl font-bold text-stone-900">${total_raised}</p>
-                  <p className="text-xs text-stone-400">raised</p>
-                </CardContent>
-              </Card>
-            </div>
+      <div className="container-app py-8 md:py-12 max-w-3xl">
+        {/* PLEDGE FORM - Main CTA, centered, above everything */}
+        <Card className="bg-white rounded-2xl border-2 border-orange-200 shadow-[0_8px_30px_-4px_rgba(234,88,12,0.15)] mb-8" data-testid="pledge-form-card">
+          <CardContent className="p-6 md:p-8">
+            {!showSignup ? (
+              <div>
+                <div className="text-center mb-6">
+                  <h2 className="text-xl md:text-2xl font-bold text-stone-900 mb-2" data-testid="pledge-headline">
+                    Pledge Your Support For {walker.display_name || walker.full_name} Today
+                  </h2>
+                  <p className="text-sm text-stone-600 mb-1">Every dollar goes to Kenyan students' education</p>
+                  <p className="text-xs text-stone-400">Choose an option below. Type in your donation amount & click continue.</p>
+                </div>
 
-            {/* Challenge + Route Map */}
-            {challenge && (
-              <Card className="bg-white rounded-2xl border border-stone-100">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Mountain className="w-5 h-5 text-orange-600" />
-                    <h3 className="text-lg font-bold text-stone-900">{challenge.name}</h3>
-                  </div>
-                  <p className="text-sm text-stone-500 mb-4">{challenge.description}</p>
-
-                  {/* Route Map */}
-                  <RouteMap
-                    challenge={challenge}
-                    totalKm={total_km}
-                    progressPct={progressPct}
-                    milestones={challenge.milestones}
-                  />
-
-                  {/* Progress bar */}
-                  <div className="mt-4">
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-stone-600">{total_km} km completed</span>
-                      <span className="font-bold text-stone-900">{progressPct.toFixed(1)}%</span>
+                {/* Two pledge options side by side */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5" data-testid="pledge-options">
+                  <div className="p-4 rounded-xl border-2 border-stone-100 bg-stone-50 hover:border-orange-200 transition-colors">
+                    <Label className="text-sm font-bold text-stone-900 block mb-2">Total Pledge</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 font-medium">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={pledgeTotal}
+                        onChange={(e) => setPledgeTotal(e.target.value)}
+                        placeholder="0.00"
+                        className="no-arrows pl-7 rounded-xl border-stone-200 bg-white h-12 text-lg font-medium"
+                        data-testid="pledge-total-input"
+                      />
                     </div>
-                    <Progress value={progressPct} className="h-3" />
-                    <p className="text-xs text-stone-400 mt-2">
-                      {total_km} of {challenge.total_distance_km} km &middot; {Math.max(0, (challenge.total_distance_km - total_km)).toFixed(1)} km remaining
+                    <p className="text-xs text-stone-400 mt-1.5">Fixed amount donation</p>
+                  </div>
+
+                  <div className="p-4 rounded-xl border-2 border-stone-100 bg-stone-50 hover:border-orange-200 transition-colors">
+                    <Label className="text-sm font-bold text-stone-900 block mb-2">Pledge Per KM</Label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 font-medium">$</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={pledgePerKm}
+                        onChange={(e) => setPledgePerKm(e.target.value)}
+                        placeholder="0.00"
+                        className="no-arrows pl-7 rounded-xl border-stone-200 bg-white h-12 text-lg font-medium"
+                        data-testid="pledge-per-km-input"
+                      />
+                    </div>
+                    <p className="text-xs text-stone-400 mt-1.5">
+                      {challenge ? `${challenge.total_distance_km}km route` : 'Per km walked'}
                     </p>
                   </div>
+                </div>
 
-                  {/* Milestones */}
-                  <div className="mt-5 space-y-2">
-                    {challenge.milestones?.map((m, i) => {
-                      const reached = total_km >= m.distance_km;
-                      return (
-                        <div key={i} className={`flex items-center gap-3 p-2 rounded-lg ${reached ? 'bg-emerald-50' : 'bg-stone-50'}`}>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${reached ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-500'}`}>
-                            {reached ? '\u2713' : i + 1}
-                          </div>
-                          <div>
-                            <p className={`text-xs font-medium ${reached ? 'text-emerald-700' : 'text-stone-600'}`}>{m.title}</p>
-                            <p className="text-[10px] text-stone-400">{m.distance_km} km &middot; {m.description}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Achievement */}
-            {currentAchievement && (
-              <Card className="bg-white rounded-2xl border border-stone-100">
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-bold text-stone-900 mb-3">Achievement Level</h3>
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
-                    <p className="text-sm font-bold text-emerald-800">{currentAchievement.achievement}</p>
-                    <p className="text-xs text-emerald-600 mt-1">Swag: {currentAchievement.swag}</p>
-                    <p className="text-xs text-stone-500 mt-1">Total raised: ${total_raised}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Share Buttons */}
-            <Card className="bg-white rounded-2xl border border-stone-100">
-              <CardContent className="p-6">
-                <ShareButtons
-                  url={window.location.href}
-                  title={`Support ${walker.display_name || walker.full_name}'s Walk for Kenya Education`}
-                  description={challenge ? `Walking ${challenge.name} - ${challenge.total_distance_km}km for Kenya Education Fund` : 'Walking for Kenya Education Fund'}
-                  walkerName={walker.display_name || walker.full_name}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Supporters/Pledges List */}
-            <Card className="bg-white rounded-2xl border border-stone-100">
-              <CardContent className="p-6">
-                <h3 className="text-lg font-bold text-stone-900 mb-4">Supporters</h3>
-                {(!pledges || pledges.length === 0) && (!sponsors || sponsors.length === 0) ? (
-                  <p className="text-stone-400 text-center py-6">No supporters yet. Be the first!</p>
-                ) : (
-                  <div className="space-y-2">
-                    {pledges?.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`pledge-${p.id}`}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center">
-                            <Heart className="w-4 h-4 text-rose-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-stone-900">
-                              {p.supporter?.display_name || p.supporter?.full_name || 'Supporter'}
-                            </p>
-                            <p className="text-xs text-stone-400">
-                              {p.pledge_type === 'per_km' ? `$${p.pledge_per_km}/km pledge` : 'Total pledge'}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className="bg-emerald-50 text-emerald-700 rounded-full font-bold">
-                          {p.pledge_type === 'per_km'
-                            ? `$${p.pledge_per_km}/km`
-                            : `$${p.pledge_total}`}
-                        </Badge>
-                      </div>
-                    ))}
-                    {sponsors?.map((s) => (
-                      <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center">
-                            <DollarSign className="w-4 h-4 text-rose-500" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-stone-900">{s.name}</p>
-                            {s.message && <p className="text-xs text-stone-400 italic">"{s.message}"</p>}
-                          </div>
-                        </div>
-                        <Badge className="bg-emerald-50 text-emerald-700 rounded-full font-bold">${s.amount}</Badge>
-                      </div>
-                    ))}
+                {/* Combined total display */}
+                {calculatedTotal > 0 && (
+                  <div className="p-3 rounded-xl bg-orange-50 border border-orange-100 mb-5 text-center" data-testid="pledge-total-display">
+                    <p className="text-xs text-orange-700 font-medium">
+                      {parseFloat(pledgeTotal) > 0 && parseFloat(pledgePerKm) > 0 ? (
+                        <>
+                          ${pledgeTotal} total + ${pledgePerKm}/km x {challenge?.total_distance_km || 0}km = {' '}
+                          <span className="text-lg font-bold">${calculatedTotal.toFixed(2)}</span>
+                        </>
+                      ) : parseFloat(pledgePerKm) > 0 ? (
+                        <>
+                          Estimated total if route completed: <span className="text-lg font-bold">${calculatedTotal.toFixed(2)}</span>
+                        </>
+                      ) : (
+                        <>
+                          Your pledge: <span className="text-lg font-bold">${calculatedTotal.toFixed(2)}</span>
+                        </>
+                      )}
+                    </p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Right: Pledge Form */}
-          <div>
-            <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_4px_20px_-2px_rgba(87,83,78,0.1)] sticky top-24">
-              <CardContent className="p-6">
-                {!showSignup ? (
-                  /* Pledge Selection */
+                <Button
+                  onClick={handleContinue}
+                  disabled={!hasAnyPledge() || submitting}
+                  className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-6 h-auto text-base disabled:opacity-50 transition-all hover:scale-[1.01]"
+                  data-testid="pledge-continue-btn"
+                >
+                  {submitting ? 'Processing...' : 'Continue'} <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+
+                {user && (
+                  <p className="text-xs text-stone-400 text-center mt-3">
+                    Pledging as {user.display_name || user.full_name}
+                  </p>
+                )}
+              </div>
+            ) : (
+              /* Supporter Sign Up / Login */
+              <div data-testid="supporter-auth-section">
+                {!showLogin ? (
                   <div>
-                    <h3 className="text-lg font-bold text-stone-900 mb-1">Support This Walk</h3>
-                    <p className="text-sm text-stone-500 mb-5">Your pledge supports Kenyan students' education.</p>
-
-                    {/* Pledge Type Selection */}
-                    <div className="space-y-3 mb-5">
-                      <button onClick={() => { setPledgeType('per_km'); setPledgeTotal(''); }} className="w-full text-left" data-testid="pledge-type-per-km">
-                        <div className={`p-4 rounded-xl border-2 transition-all ${
-                          pledgeType === 'per_km' ? 'border-orange-500 bg-orange-50' : 'border-stone-100 hover:border-stone-200'
-                        }`}>
-                          <p className="text-sm font-bold text-stone-900">Pledge per km</p>
-                          <p className="text-xs text-stone-500 mt-0.5">Amount multiplied by distance completed</p>
-                          {pledgeType === 'per_km' && (
-                            <div className="mt-3">
-                              <Label className="text-xs text-stone-600">Amount per km (USD)</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={pledgePerKm}
-                                onChange={(e) => setPledgePerKm(e.target.value)}
-                                placeholder="e.g. 1.00"
-                                className="mt-1 rounded-xl border-stone-200 bg-white h-11"
-                                data-testid="pledge-per-km-input"
-                              />
-                              {estimatedPerKm && (
-                                <p className="text-xs text-orange-600 mt-1 font-medium">
-                                  Est. total if completed: ${estimatedPerKm}
-                                </p>
-                              )}
-                            </div>
-                          )}
+                    <h3 className="text-lg font-bold text-stone-900 mb-1 text-center">Sign Up to Support</h3>
+                    <p className="text-sm text-stone-500 mb-4 text-center">
+                      Create an account to track your pledge for {walker.display_name || walker.full_name}.
+                    </p>
+                    <form onSubmit={handleSupporterSignup} className="space-y-3">
+                      <div>
+                        <Label className="text-stone-700 text-xs font-medium">Full Name</Label>
+                        <Input
+                          value={signupForm.full_name}
+                          onChange={(e) => setSignupForm(f => ({ ...f, full_name: e.target.value }))}
+                          placeholder="Your full name"
+                          required
+                          className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-11"
+                          data-testid="supporter-signup-name"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-stone-700 text-xs font-medium">Email</Label>
+                        <Input
+                          type="email"
+                          value={signupForm.email}
+                          onChange={(e) => setSignupForm(f => ({ ...f, email: e.target.value }))}
+                          placeholder="you@example.com"
+                          required
+                          className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-11"
+                          data-testid="supporter-signup-email"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-stone-700 text-xs font-medium">Password</Label>
+                        <div className="relative mt-1">
+                          <Input
+                            type={showPw ? 'text' : 'password'}
+                            value={signupForm.password}
+                            onChange={(e) => setSignupForm(f => ({ ...f, password: e.target.value }))}
+                            placeholder="At least 6 characters"
+                            required
+                            className="rounded-xl border-stone-200 bg-stone-50 h-11 pr-10"
+                            data-testid="supporter-signup-password"
+                          />
+                          <button type="button" onClick={() => setShowPw(!showPw)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                            {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-orange-50 border border-orange-100">
+                        <p className="text-xs font-medium text-orange-800">Your pledge:</p>
+                        <p className="text-sm font-bold text-orange-600">${calculatedTotal.toFixed(2)} total</p>
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                        data-testid="supporter-signup-submit"
+                      >
+                        {submitting ? 'Creating...' : 'Sign Up & Pledge'}
+                      </Button>
+                    </form>
+                    <p className="text-center text-xs text-stone-500 mt-4">
+                      Already have an account?{' '}
+                      <button onClick={() => setShowLogin(true)} className="text-orange-600 font-medium" data-testid="supporter-login-toggle">
+                        Log In
                       </button>
-
-                      <button onClick={() => { setPledgeType('total'); setPledgePerKm(''); }} className="w-full text-left" data-testid="pledge-type-total">
-                        <div className={`p-4 rounded-xl border-2 transition-all ${
-                          pledgeType === 'total' ? 'border-orange-500 bg-orange-50' : 'border-stone-100 hover:border-stone-200'
-                        }`}>
-                          <p className="text-sm font-bold text-stone-900">Total Pledge</p>
-                          <p className="text-xs text-stone-500 mt-0.5">A fixed amount upon challenge completion</p>
-                          {pledgeType === 'total' && (
-                            <div className="mt-3">
-                              <Label className="text-xs text-stone-600">Pledge amount (USD)</Label>
-                              <div className="grid grid-cols-3 gap-2 mt-1 mb-2">
-                                {[25, 50, 100].map(amt => (
-                                  <Button
-                                    key={amt}
-                                    type="button"
-                                    variant={pledgeTotal === String(amt) ? 'default' : 'outline'}
-                                    onClick={() => setPledgeTotal(String(amt))}
-                                    className={`rounded-xl text-xs ${pledgeTotal === String(amt) ? 'bg-orange-600 hover:bg-orange-700 text-white' : 'border-stone-200'}`}
-                                    data-testid={`pledge-amount-${amt}`}
-                                  >
-                                    ${amt}
-                                  </Button>
-                                ))}
-                              </div>
-                              <Input
-                                type="number"
-                                value={pledgeTotal}
-                                onChange={(e) => setPledgeTotal(e.target.value)}
-                                placeholder="Or enter custom amount"
-                                className="rounded-xl border-stone-200 bg-white h-11"
-                                data-testid="pledge-total-input"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    </div>
-
-                    <Button
-                      onClick={handleContinue}
-                      disabled={!pledgeType || submitting}
-                      className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto disabled:opacity-50"
-                      data-testid="pledge-continue-btn"
-                    >
-                      Continue <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-
-                    {user && (
-                      <p className="text-xs text-stone-400 text-center mt-3">
-                        Pledging as {user.display_name || user.full_name}
-                      </p>
-                    )}
+                    </p>
+                    <button onClick={() => setShowSignup(false)} className="flex items-center gap-1 mx-auto text-xs text-stone-400 mt-2 hover:text-stone-600" data-testid="supporter-back-btn">
+                      <ArrowLeft className="w-3 h-3" /> Back to pledge options
+                    </button>
                   </div>
                 ) : (
-                  /* Supporter Sign Up / Login */
-                  <div data-testid="supporter-auth-section">
-                    {!showLogin ? (
+                  <div>
+                    <h3 className="text-lg font-bold text-stone-900 mb-1 text-center">Log In to Support</h3>
+                    <p className="text-sm text-stone-500 mb-4 text-center">Log in to record your pledge.</p>
+                    <form onSubmit={handleSupporterLogin} className="space-y-3">
                       <div>
-                        <h3 className="text-lg font-bold text-stone-900 mb-1">Sign Up to Support</h3>
-                        <p className="text-sm text-stone-500 mb-4">
-                          Create an account to track your pledge for {walker.display_name || walker.full_name}.
-                        </p>
-                        <form onSubmit={handleSupporterSignup} className="space-y-3">
-                          <div>
-                            <Label className="text-stone-700 text-xs font-medium">Full Name</Label>
-                            <Input
-                              value={signupForm.full_name}
-                              onChange={(e) => setSignupForm(f => ({ ...f, full_name: e.target.value }))}
-                              placeholder="Your full name"
-                              required
-                              className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-11"
-                              data-testid="supporter-signup-name"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-stone-700 text-xs font-medium">Email</Label>
-                            <Input
-                              type="email"
-                              value={signupForm.email}
-                              onChange={(e) => setSignupForm(f => ({ ...f, email: e.target.value }))}
-                              placeholder="you@example.com"
-                              required
-                              className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-11"
-                              data-testid="supporter-signup-email"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-stone-700 text-xs font-medium">Password</Label>
-                            <div className="relative mt-1">
-                              <Input
-                                type={showPw ? 'text' : 'password'}
-                                value={signupForm.password}
-                                onChange={(e) => setSignupForm(f => ({ ...f, password: e.target.value }))}
-                                placeholder="At least 6 characters"
-                                required
-                                className="rounded-xl border-stone-200 bg-stone-50 h-11 pr-10"
-                                data-testid="supporter-signup-password"
-                              />
-                              <button type="button" onClick={() => setShowPw(!showPw)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
-                                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-xl bg-orange-50 border border-orange-100">
-                            <p className="text-xs font-medium text-orange-800">Your pledge:</p>
-                            <p className="text-sm font-bold text-orange-600">
-                              {pledgeType === 'per_km' ? `$${pledgePerKm}/km` : `$${pledgeTotal} total`}
-                            </p>
-                          </div>
-                          <Button
-                            type="submit"
-                            disabled={submitting}
-                            className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
-                            data-testid="supporter-signup-submit"
-                          >
-                            {submitting ? 'Creating...' : 'Sign Up & Pledge'}
-                          </Button>
-                        </form>
-                        <p className="text-center text-xs text-stone-500 mt-4">
-                          Already have an account?{' '}
-                          <button onClick={() => setShowLogin(true)} className="text-orange-600 font-medium" data-testid="supporter-login-toggle">
-                            Log In
-                          </button>
-                        </p>
-                        <button onClick={() => setShowSignup(false)} className="block mx-auto text-xs text-stone-400 mt-2 hover:text-stone-600" data-testid="supporter-back-btn">
-                          Back to pledge options
-                        </button>
+                        <Label className="text-stone-700 text-xs font-medium">Email</Label>
+                        <Input
+                          type="email"
+                          value={loginForm.email}
+                          onChange={(e) => setLoginForm(f => ({ ...f, email: e.target.value }))}
+                          placeholder="you@example.com"
+                          required
+                          className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-11"
+                          data-testid="supporter-login-email"
+                        />
                       </div>
-                    ) : (
                       <div>
-                        <h3 className="text-lg font-bold text-stone-900 mb-1">Log In to Support</h3>
-                        <p className="text-sm text-stone-500 mb-4">Log in to record your pledge.</p>
-                        <form onSubmit={handleSupporterLogin} className="space-y-3">
-                          <div>
-                            <Label className="text-stone-700 text-xs font-medium">Email</Label>
-                            <Input
-                              type="email"
-                              value={loginForm.email}
-                              onChange={(e) => setLoginForm(f => ({ ...f, email: e.target.value }))}
-                              placeholder="you@example.com"
-                              required
-                              className="mt-1 rounded-xl border-stone-200 bg-stone-50 h-11"
-                              data-testid="supporter-login-email"
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-stone-700 text-xs font-medium">Password</Label>
-                            <div className="relative mt-1">
-                              <Input
-                                type={showPw ? 'text' : 'password'}
-                                value={loginForm.password}
-                                onChange={(e) => setLoginForm(f => ({ ...f, password: e.target.value }))}
-                                required
-                                className="rounded-xl border-stone-200 bg-stone-50 h-11 pr-10"
-                                data-testid="supporter-login-password"
-                              />
-                              <button type="button" onClick={() => setShowPw(!showPw)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
-                                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                              </button>
-                            </div>
-                          </div>
-                          <div className="p-3 rounded-xl bg-orange-50 border border-orange-100">
-                            <p className="text-xs font-medium text-orange-800">Your pledge:</p>
-                            <p className="text-sm font-bold text-orange-600">
-                              {pledgeType === 'per_km' ? `$${pledgePerKm}/km` : `$${pledgeTotal} total`}
-                            </p>
-                          </div>
-                          <Button
-                            type="submit"
-                            disabled={submitting}
-                            className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
-                            data-testid="supporter-login-submit"
-                          >
-                            {submitting ? 'Logging in...' : 'Log In & Pledge'}
-                          </Button>
-                        </form>
-                        <p className="text-center text-xs text-stone-500 mt-4">
-                          Need an account?{' '}
-                          <button onClick={() => setShowLogin(false)} className="text-orange-600 font-medium">
-                            Sign Up
+                        <Label className="text-stone-700 text-xs font-medium">Password</Label>
+                        <div className="relative mt-1">
+                          <Input
+                            type={showPw ? 'text' : 'password'}
+                            value={loginForm.password}
+                            onChange={(e) => setLoginForm(f => ({ ...f, password: e.target.value }))}
+                            required
+                            className="rounded-xl border-stone-200 bg-stone-50 h-11 pr-10"
+                            data-testid="supporter-login-password"
+                          />
+                          <button type="button" onClick={() => setShowPw(!showPw)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                            {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
-                        </p>
-                        <button onClick={() => { setShowSignup(false); setShowLogin(false); }} className="block mx-auto text-xs text-stone-400 mt-2 hover:text-stone-600">
-                          Back to pledge options
-                        </button>
+                        </div>
                       </div>
-                    )}
+                      <div className="p-3 rounded-xl bg-orange-50 border border-orange-100">
+                        <p className="text-xs font-medium text-orange-800">Your pledge:</p>
+                        <p className="text-sm font-bold text-orange-600">${calculatedTotal.toFixed(2)} total</p>
+                      </div>
+                      <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-5 h-auto"
+                        data-testid="supporter-login-submit"
+                      >
+                        {submitting ? 'Logging in...' : 'Log In & Pledge'}
+                      </Button>
+                    </form>
+                    <p className="text-center text-xs text-stone-500 mt-4">
+                      Need an account?{' '}
+                      <button onClick={() => setShowLogin(false)} className="text-orange-600 font-medium">Sign Up</button>
+                    </p>
+                    <button onClick={() => { setShowSignup(false); setShowLogin(false); }} className="flex items-center gap-1 mx-auto text-xs text-stone-400 mt-2 hover:text-stone-600">
+                      <ArrowLeft className="w-3 h-3" /> Back to pledge options
+                    </button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <Card className="bg-white rounded-2xl border border-stone-100">
+            <CardContent className="p-5 text-center">
+              <MapPin className="w-5 h-5 text-orange-600 mx-auto mb-2" />
+              <p className="text-xl font-bold text-stone-900">{total_km} km</p>
+              <p className="text-xs text-stone-400">walked</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white rounded-2xl border border-stone-100">
+            <CardContent className="p-5 text-center">
+              <Footprints className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
+              <p className="text-xl font-bold text-stone-900">{total_steps.toLocaleString()}</p>
+              <p className="text-xs text-stone-400">steps</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-white rounded-2xl border border-stone-100">
+            <CardContent className="p-5 text-center">
+              <Heart className="w-5 h-5 text-rose-600 mx-auto mb-2" />
+              <p className="text-xl font-bold text-stone-900">${total_raised}</p>
+              <p className="text-xs text-stone-400">raised</p>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Challenge + Route Map */}
+        {challenge && (
+          <Card className="bg-white rounded-2xl border border-stone-100 mb-6">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Mountain className="w-5 h-5 text-orange-600" />
+                <h3 className="text-lg font-bold text-stone-900">{challenge.name}</h3>
+              </div>
+              <p className="text-sm text-stone-500 mb-4">{challenge.description}</p>
+              <RouteMap challenge={challenge} totalKm={total_km} progressPct={progressPct} milestones={challenge.milestones} />
+              <div className="mt-4">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-stone-600">{total_km} km completed</span>
+                  <span className="font-bold text-stone-900">{progressPct.toFixed(1)}%</span>
+                </div>
+                <Progress value={progressPct} className="h-3" />
+                <p className="text-xs text-stone-400 mt-2">
+                  {total_km} of {challenge.total_distance_km} km &middot; {Math.max(0, (challenge.total_distance_km - total_km)).toFixed(1)} km remaining
+                </p>
+              </div>
+              <div className="mt-5 space-y-2">
+                {challenge.milestones?.map((m, i) => {
+                  const reached = total_km >= m.distance_km;
+                  return (
+                    <div key={i} className={`flex items-center gap-3 p-2 rounded-lg ${reached ? 'bg-emerald-50' : 'bg-stone-50'}`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${reached ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-500'}`}>
+                        {reached ? '\u2713' : i + 1}
+                      </div>
+                      <div>
+                        <p className={`text-xs font-medium ${reached ? 'text-emerald-700' : 'text-stone-600'}`}>{m.title}</p>
+                        <p className="text-[10px] text-stone-400">{m.distance_km} km &middot; {m.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Achievement */}
+        {currentAchievement && (
+          <Card className="bg-white rounded-2xl border border-stone-100 mb-6">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-bold text-stone-900 mb-3">Achievement Level</h3>
+              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                <p className="text-sm font-bold text-emerald-800">{currentAchievement.achievement}</p>
+                <p className="text-xs text-emerald-600 mt-1">Swag: {currentAchievement.swag}</p>
+                <p className="text-xs text-stone-500 mt-1">Total raised: ${total_raised}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Share Buttons */}
+        <Card className="bg-white rounded-2xl border border-stone-100 mb-6">
+          <CardContent className="p-6">
+            <ShareButtons
+              url={window.location.href}
+              title={`Support ${walker.display_name || walker.full_name}'s Walk for Kenya Education`}
+              description={challenge ? `Walking ${challenge.name} - ${challenge.total_distance_km}km for Kenya Education Fund` : 'Walking for Kenya Education Fund'}
+              walkerName={walker.display_name || walker.full_name}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Supporters/Pledges List */}
+        <Card className="bg-white rounded-2xl border border-stone-100">
+          <CardContent className="p-6">
+            <h3 className="text-lg font-bold text-stone-900 mb-4">Supporters</h3>
+            {(!pledges || pledges.length === 0) && (!sponsors || sponsors.length === 0) ? (
+              <p className="text-stone-400 text-center py-6">No supporters yet. Be the first!</p>
+            ) : (
+              <div className="space-y-2">
+                {pledges?.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50" data-testid={`pledge-${p.id}`}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center">
+                        <Heart className="w-4 h-4 text-rose-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-stone-900">
+                          {p.supporter?.display_name || p.supporter?.full_name || 'Supporter'}
+                        </p>
+                        <p className="text-xs text-stone-400">
+                          {p.pledge_type === 'per_km' ? `$${p.pledge_per_km}/km pledge` : p.pledge_type === 'combined' ? 'Combined pledge' : 'Total pledge'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-emerald-50 text-emerald-700 rounded-full font-bold">
+                      {p.pledge_type === 'per_km'
+                        ? `$${p.pledge_per_km}/km`
+                        : p.pledge_type === 'combined'
+                          ? `$${(p.pledge_total || 0) + (p.pledge_per_km || 0) * (challenge?.total_distance_km || 0)}`
+                          : `$${p.pledge_total}`}
+                    </Badge>
+                  </div>
+                ))}
+                {sponsors?.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-stone-50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-rose-50 flex items-center justify-center">
+                        <DollarSign className="w-4 h-4 text-rose-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-stone-900">{s.name}</p>
+                        {s.message && <p className="text-xs text-stone-400 italic">"{s.message}"</p>}
+                      </div>
+                    </div>
+                    <Badge className="bg-emerald-50 text-emerald-700 rounded-full font-bold">${s.amount}</Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* GiveButter Placeholder */}
+        <Card className="bg-orange-50 rounded-2xl border border-orange-100 mt-6" data-testid="givebutter-placeholder">
+          <CardContent className="p-6 text-center">
+            <Heart className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+            <h3 className="text-base font-bold text-stone-900 mb-1">Donate Directly via GiveButter</h3>
+            <p className="text-xs text-stone-500 mb-3">
+              KEF uses GiveButter for secure payment processing. Click below to donate directly.
+            </p>
+            <Button
+              variant="outline"
+              className="rounded-full border-orange-300 text-orange-700 hover:bg-orange-100"
+              data-testid="givebutter-donate-btn"
+              onClick={() => toast.info('GiveButter integration will be configured with your embed code')}
+            >
+              <Heart className="w-4 h-4 mr-2" /> Donate via GiveButter
+            </Button>
+            <p className="text-[10px] text-stone-400 mt-2">GiveButter embed code will be added here</p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

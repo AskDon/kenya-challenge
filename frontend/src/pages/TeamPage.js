@@ -141,8 +141,8 @@ export default function TeamPage() {
       <h1 className="text-2xl md:text-3xl font-bold text-stone-900 mb-8">Your Team</h1>
 
       {!team ? (
-        /* Create Team */
-        <div className="max-w-lg mx-auto">
+        /* Create Team - only shown if user has no team */
+        <div className="max-w-lg mx-auto" data-testid="create-team-section">
           <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             <CardContent className="p-8 text-center">
               <Users className="w-12 h-12 text-orange-300 mx-auto mb-4" />
@@ -184,7 +184,7 @@ export default function TeamPage() {
           </Card>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6" data-testid="team-management-section">
           {/* Team Header with Leader */}
           <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             <CardContent className="p-6">
@@ -205,89 +205,95 @@ export default function TeamPage() {
                     </p>
                   )}
                 </div>
+                <Button onClick={handleLeave} variant="outline" className="rounded-full border-stone-200 text-red-600 hover:text-red-700 hover:border-red-200" data-testid="team-leave-btn">
+                  Leave Team
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Invite Section */}
+          <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+            <CardContent className="p-6">
+              <div className="text-center mb-5">
+                <UserPlus className="w-8 h-8 text-orange-400 mx-auto mb-2" />
+                <h3 className="text-base font-bold text-stone-900">Invite friends, family and colleagues to join your Team</h3>
+              </div>
+
+              {/* Copy invite link */}
+              <div className="flex gap-2 mb-5 max-w-md mx-auto">
+                <Input
+                  readOnly
+                  value={team?.invite_code ? `${window.location.origin}/teams/join/${team.invite_code}` : ''}
+                  className="rounded-xl bg-stone-50 border-stone-200 text-xs h-10 text-stone-600"
+                  data-testid="team-invite-link"
+                />
+                <Button onClick={copyInvite} className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white shrink-0" data-testid="team-copy-invite-btn">
+                  <Copy className="w-4 h-4 mr-1" /> Copy
+                </Button>
+              </div>
+
+              {/* Invite Teammates by Email */}
+              <div className="border-t border-stone-100 pt-5">
+                <h4 className="text-sm font-bold text-stone-900 mb-3">Invite Teammates</h4>
+                <div className="space-y-2 mb-4">
+                  {newInvites.map((inv, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input
+                        value={inv.name}
+                        onChange={(e) => {
+                          const copy = [...newInvites];
+                          copy[i].name = e.target.value;
+                          setNewInvites(copy);
+                        }}
+                        placeholder="Name"
+                        className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
+                        data-testid={`team-invite-name-${i}`}
+                      />
+                      <Input
+                        type="email"
+                        value={inv.email}
+                        onChange={(e) => {
+                          const copy = [...newInvites];
+                          copy[i].email = e.target.value;
+                          setNewInvites(copy);
+                        }}
+                        placeholder="Email"
+                        className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
+                        data-testid={`team-invite-email-${i}`}
+                      />
+                      {newInvites.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setNewInvites(newInvites.filter((_, j) => j !== i))}
+                          className="text-stone-300 hover:text-red-500 shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <div className="flex gap-2">
-                  {isLeader && (
-                    <Button
-                      onClick={() => setShowInviteForm(!showInviteForm)}
-                      variant="outline"
-                      className="rounded-full border-orange-200 text-orange-600 hover:bg-orange-50"
-                      data-testid="team-invite-members-btn"
-                    >
-                      <UserPlus className="w-4 h-4 mr-2" /> Invite Members
-                    </Button>
-                  )}
-                  <Button onClick={copyInvite} variant="outline" className="rounded-full border-stone-200 text-stone-700" data-testid="team-copy-invite-btn">
-                    <Copy className="w-4 h-4 mr-2" /> Copy Invite Link
+                  <Button
+                    variant="outline"
+                    onClick={() => setNewInvites([...newInvites, { name: '', email: '' }])}
+                    className="rounded-xl border-stone-200 text-stone-600"
+                    data-testid="team-add-invite-row"
+                  >
+                    <Plus className="w-4 h-4 mr-1" /> Add More
                   </Button>
-                  <Button onClick={handleLeave} variant="outline" className="rounded-full border-stone-200 text-red-600 hover:text-red-700 hover:border-red-200" data-testid="team-leave-btn">
-                    Leave Team
+                  <Button
+                    onClick={handleSendInvites}
+                    disabled={sendingInvites}
+                    className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
+                    data-testid="team-send-invites"
+                  >
+                    <Send className="w-4 h-4 mr-1" /> {sendingInvites ? 'Sending...' : 'Send Invites'}
                   </Button>
                 </div>
               </div>
-
-              {/* Invite Form */}
-              {showInviteForm && isLeader && (
-                <div className="mt-6 pt-6 border-t border-stone-100">
-                  <h3 className="text-sm font-bold text-stone-900 mb-3">Invite New Team Members</h3>
-                  <div className="space-y-2 mb-4">
-                    {newInvites.map((inv, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <Input
-                          value={inv.name}
-                          onChange={(e) => {
-                            const copy = [...newInvites];
-                            copy[i].name = e.target.value;
-                            setNewInvites(copy);
-                          }}
-                          placeholder="Name"
-                          className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
-                          data-testid={`team-invite-name-${i}`}
-                        />
-                        <Input
-                          type="email"
-                          value={inv.email}
-                          onChange={(e) => {
-                            const copy = [...newInvites];
-                            copy[i].email = e.target.value;
-                            setNewInvites(copy);
-                          }}
-                          placeholder="Email"
-                          className="rounded-xl border-stone-200 bg-stone-50 h-10 flex-1"
-                          data-testid={`team-invite-email-${i}`}
-                        />
-                        {newInvites.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setNewInvites(newInvites.filter((_, j) => j !== i))}
-                            className="text-stone-300 hover:text-red-500 shrink-0"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setNewInvites([...newInvites, { name: '', email: '' }])}
-                      className="rounded-xl border-stone-200 text-stone-600"
-                      data-testid="team-add-invite-row"
-                    >
-                      <Plus className="w-4 h-4 mr-1" /> Add More
-                    </Button>
-                    <Button
-                      onClick={handleSendInvites}
-                      disabled={sendingInvites}
-                      className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white"
-                      data-testid="team-send-invites"
-                    >
-                      <Send className="w-4 h-4 mr-1" /> {sendingInvites ? 'Sending...' : 'Send Invites'}
-                    </Button>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -335,8 +341,17 @@ export default function TeamPage() {
           <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
             <CardContent className="p-6">
               <h3 className="text-lg font-bold text-stone-900 mb-4">Team Members</h3>
-              <div className="space-y-3">
-                {team.members?.map((member) => (
+              {/* Table header */}
+              <div className="hidden sm:grid grid-cols-12 gap-2 px-4 pb-2 border-b border-stone-100 text-xs text-stone-400 font-medium uppercase tracking-wider">
+                <div className="col-span-3">Name</div>
+                <div className="col-span-3">Challenge</div>
+                <div className="col-span-3">Progress</div>
+                <div className="col-span-2 text-right">Total Pledged</div>
+                <div className="col-span-1"></div>
+              </div>
+              <div className="space-y-2 mt-2">
+                {/* Sort: leader first */}
+                {[...(team.members || [])].sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0)).map((member) => (
                   <div key={member.id} className="flex items-center justify-between p-4 rounded-xl bg-stone-50" data-testid={`team-member-${member.id}`}>
                     <div className="flex items-center gap-4 flex-1">
                       <div className="w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center relative">
@@ -393,17 +408,6 @@ export default function TeamPage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Invite Code */}
-          <Card className="bg-stone-900 rounded-2xl border-none">
-            <CardContent className="p-6 text-center">
-              <p className="text-stone-400 text-sm mb-2">Share this invite code with friends</p>
-              <p className="text-2xl font-bold text-white tracking-widest">{team.invite_code}</p>
-              <Button onClick={copyInvite} className="mt-4 rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="team-share-code-btn">
-                <Copy className="w-4 h-4 mr-2" /> Copy Full Link
-              </Button>
             </CardContent>
           </Card>
         </div>

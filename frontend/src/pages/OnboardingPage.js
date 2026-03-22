@@ -38,7 +38,7 @@ export default function OnboardingPage() {
   const [teamInvites, setTeamInvites] = useState([{ name: '', email: '' }]);
 
   // Supporters
-  const [supporters, setSupporters] = useState([{ name: '', email: '' }]);
+  const [supporters, setSupporters] = useState([{ name: '', email: '' }, { name: '', email: '' }, { name: '', email: '' }]);
 
   // Loading
   const [submitting, setSubmitting] = useState(false);
@@ -62,12 +62,23 @@ export default function OnboardingPage() {
     }
   }, [user, navigate]);
 
-  const searchTeams = async () => {
+  const searchTeams = async (query) => {
+    const q = query !== undefined ? query : searchQuery;
     try {
-      const res = await api.get(`/teams/search?q=${encodeURIComponent(searchQuery)}`);
+      const res = await api.get(`/teams/search?q=${encodeURIComponent(q)}`);
       setSearchResults(res.data);
     } catch { toast.error('Search failed'); }
   };
+
+  // Auto-search when query changes (debounced) or when "Join a Team" is selected
+  useEffect(() => {
+    if (teamChoice === 'join') {
+      const timer = setTimeout(() => {
+        searchTeams(searchQuery);
+      }, searchQuery ? 300 : 0);
+      return () => clearTimeout(timer);
+    }
+  }, [searchQuery, teamChoice]);
 
   const joinTeam = async (inviteCode) => {
     try {
@@ -313,9 +324,9 @@ export default function OnboardingPage() {
                     placeholder="Search by team name..."
                     className="rounded-xl border-stone-200 bg-stone-50 h-11 flex-1"
                     data-testid="team-search-input"
-                    onKeyDown={(e) => e.key === 'Enter' && searchTeams()}
+                    onKeyDown={(e) => e.key === 'Enter' && searchTeams(searchQuery)}
                   />
-                  <Button onClick={searchTeams} className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white" data-testid="team-search-btn">
+                  <Button onClick={() => searchTeams(searchQuery)} className="rounded-xl bg-orange-600 hover:bg-orange-700 text-white" data-testid="team-search-btn">
                     <Search className="w-4 h-4" />
                   </Button>
                 </div>
@@ -333,9 +344,11 @@ export default function OnboardingPage() {
                       </div>
                     ))}
                   </div>
-                ) : searchQuery ? (
-                  <p className="text-sm text-stone-400 text-center py-4">No teams found. Try a different search or create your own!</p>
-                ) : null}
+                ) : (
+                  <p className="text-sm text-stone-400 text-center py-4">
+                    {searchQuery ? 'No teams found for that search. Try a different name or create your own!' : 'No teams available yet. You can create your own!'}
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}

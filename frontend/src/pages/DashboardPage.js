@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent } from '../components/ui/card';
@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
-import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2, Flag } from 'lucide-react';
+import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2, Flag, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROUTE_BG = 'https://images.unsplash.com/photo-1759767119566-e7dad33d540b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
@@ -127,9 +127,11 @@ function RouteMap({ challenge, totalKm, progressPct, milestones }) {
 }
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, fetchUser } = useAuth();
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingPic, setUploadingPic] = useState(false);
+  const picInputRef = useRef(null);
 
   useEffect(() => {
     api.get('/users/progress')
@@ -143,6 +145,29 @@ export default function DashboardPage() {
     copyToClipboard(url);
   };
 
+  const handleProfilePicUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    setUploadingPic(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post('/auth/profile-picture', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Profile picture updated!');
+      if (fetchUser) fetchUser();
+    } catch {
+      toast.error('Failed to upload picture');
+    } finally {
+      setUploadingPic(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
@@ -154,17 +179,38 @@ export default function DashboardPage() {
 
   return (
     <div className="container-app py-8 md:py-12" data-testid="dashboard-page">
-      {/* Greeting + Next Challenge button */}
+      {/* Greeting + Profile Picture */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-stone-900">
-            Habari, {user?.display_name || user?.full_name}!
-          </h1>
-          <p className="text-stone-500 mt-1">
-            {hasChallenge
-              ? isComplete ? 'Congratulations! You completed your challenge!' : 'Your journey continues. Keep walking!'
-              : 'Choose a challenge to start your journey.'}
-          </p>
+        <div className="flex items-center gap-4">
+          {/* Profile Picture */}
+          <div className="relative group">
+            <div className="w-14 h-14 rounded-full overflow-hidden bg-orange-100 flex items-center justify-center border-2 border-orange-200">
+              {user?.profile_picture_url ? (
+                <img src={user.profile_picture_url} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl font-bold text-orange-600">{(user?.display_name || user?.full_name)?.[0]}</span>
+              )}
+            </div>
+            <button
+              onClick={() => picInputRef.current?.click()}
+              disabled={uploadingPic}
+              className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+              data-testid="profile-pic-upload-btn"
+            >
+              <Camera className="w-4 h-4 text-white" />
+            </button>
+            <input ref={picInputRef} type="file" accept="image/*" onChange={handleProfilePicUpload} className="hidden" />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-stone-900">
+              Habari, {user?.display_name || user?.full_name}!
+            </h1>
+            <p className="text-stone-500 mt-1">
+              {hasChallenge
+                ? isComplete ? 'Congratulations! You completed your challenge!' : 'Your journey continues. Keep walking!'
+                : 'Choose a challenge to start your journey.'}
+            </p>
+          </div>
         </div>
         {hasChallenge && isComplete && (
           <Link to="/onboarding">

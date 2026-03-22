@@ -172,6 +172,14 @@ export default function LandingPage() {
                 </Card>
               ))}
             </div>
+            {/* H2: Choose Your Route CTA */}
+            <div className="text-center mt-10">
+              <Link to={user ? '/onboarding' : '/signup'}>
+                <Button className="rounded-full bg-orange-600 hover:bg-orange-700 text-white shadow-lg shadow-orange-600/20 font-medium px-8 py-5 h-auto text-base transition-all hover:scale-[1.02]" data-testid="choose-route-cta">
+                  Choose Your Route <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
       )}
@@ -413,7 +421,7 @@ export default function LandingPage() {
                     >
                       {submitting ? 'Submitting...' : (
                         <>
-                          <Send className="w-4 h-4 mr-2" /> Submit Inquiry
+                          <Send className="w-4 h-4 mr-2" /> Become a Sponsor
                         </>
                       )}
                     </Button>
