@@ -1,196 +1,96 @@
-# The Kenya Challenge - PRD
+# The Kenya Challenge - Product Requirements Document
 
 ## Original Problem Statement
-Build "The Kenya Challenge", a web + mobile-friendly app for KEF (Kenya Education Fund) that combines virtual walking challenges along Kenyan routes with peer-to-peer fundraising.
+Build "The Kenya Challenge," a web and mobile-friendly application for the charity KEF (Kenya Education Fund). The application facilitates virtual walking challenges along Kenyan routes combined with peer-to-peer fundraising.
+
+## Tech Stack
+- **Frontend**: React, React Router, Tailwind CSS, shadcn/ui, Axios
+- **Backend**: FastAPI, MongoDB (pymongo async), JWT authentication
+- **Payment**: GiveButter (placeholder embed - needs embed code)
+- **Fitness**: Google Fit (backend OAuth ready - needs client config)
 
 ## Architecture
-- **Frontend**: React 19 + Tailwind CSS + shadcn/ui + React Router
-- **Backend**: FastAPI (Python) with Motor (async MongoDB driver)
-- **Database**: MongoDB
-- **Auth**: JWT (email/password)
-- **Design**: KEF-inspired (Navy #1a3660, Orange #ea580c, stone backgrounds)
+```
+/app/
+├── backend/
+│   ├── server.py          (main API - all routes)
+│   ├── services/
+│   │   ├── payment_service.py (GiveButter placeholder)
+│   │   └── google_fit_service.py
+│   └── uploads/           (file storage)
+├── frontend/src/
+│   ├── pages/            (all page components)
+│   ├── components/       (shared + shadcn/ui)
+│   ├── context/          (AuthContext)
+│   └── lib/              (api.js)
+├── PUNCHLIST.md
+├── FREELANCER_HANDOFF.md
+└── QUICK_START.md
+```
 
 ## User Roles
-1. **Walker** - Signs up, picks a challenge/walker type, logs activity, shares fundraising link, manages supporters
-2. **Teammate** - Same as Walker but joins via team invite link
-3. **Supporter** - Creates pledges (flat or per-km) on walker's fundraising page, tracks pledges via dashboard
-4. **Corporate Sponsor** - Fills form, selects package (Title/Gold/Silver)
-5. **Admin (KEF)** - Configures challenges, walker types, achievement levels, views stats
+1. **Admin** - Manages challenges, walker types, achievements, sponsors, users
+2. **Walker** - Registers, joins challenges, logs activities, creates/joins teams
+3. **Supporter** - Pledges money per km or total to specific walkers
 
-## Core Requirements
-- Auth & profiles (email/password, JWT)
-- Challenges with milestones (3 pre-seeded: 100km, 150km, 200km)
-- Walker Types (entry fees: Basic $25, Builder $97, Leader $250)
-- Achievement Levels (fundraising milestones with swag rewards)
-- Teams with invite links
-- Activity logging (steps/km with conversion)
-- Route progress visualization
-- **Public fundraising pages with pledge system (per-km or flat amount)**
-- **Supporter signup/login flow with pledge creation**
-- **Supporter Dashboard to track pledges**
-- Leaderboards (individuals + teams, by distance + raised)
-- Admin console (CRUD challenges, walker types, achievement levels, stats, config)
+## Core Features (Implemented)
+- Multi-role authentication (Admin, Walker, Supporter)
+- Admin CRUD: Challenges, Walker Types, Achievement Levels, Corporate Sponsors, Sponsorship Levels
+- Admin Stats dashboard with per-challenge breakdown
+- Admin user management with deletion
+- Walker onboarding: multi-step flow with challenge/type selection, team join/create
+- Team creation, management, invite by code and email
+- Manual activity logging + Google Fit placeholder
+- Route progress visualization with milestone markers
+- Leaderboards (distance, raised) with clickable walker names
+- Public fundraising pages per walker
+- Two-option pledge system (Total + Per KM, combinable)
+- Supporter signup/login flow from fundraising page
+- Social sharing buttons
+- Corporate sponsors display on landing page
+- Sponsor inquiry form ("Become a Sponsor")
+- Walker profile picture upload
+- GiveButter payment placeholder
 
-## What's Been Implemented
+## Database Collections
+- `users`, `challenges`, `teams`, `pledges`, `activities`
+- `walker_types`, `achievement_levels`, `sponsors`
+- `corporate_sponsors`, `sponsorship_levels`, `sponsor_inquiries`
+- `supporter_invites`, `app_config`, `donations`
 
-### 2026-02-10 - Initial MVP
-- Full backend API (19+ endpoints, all tested 100%)
-- JWT authentication system
-- Complete CRUD for challenges, pricing levels, config
-- Activity logging with steps<->km conversion
-- Team creation, invite links, join flow
-- Sponsor donation system (mock payments)
-- Public fundraising pages
-- 4-tab leaderboard system
-- Admin console with 6 tabs
-- Seed data (admin, 2 walkers, 3 challenges, 5 levels, team, activities, sponsors)
-- Beautiful landing page with KEF branding
-- Mobile-first responsive design
-- Route progress visualization with map placeholder
-
-### 2026-03-06 - Supporter & Pledge System
-- **Public Fundraising Page** (`/fundraise/{userId}`) with:
-  - Walker profile, team badge, progress stats
-  - Challenge info with route map and milestones
-  - Achievement level display
-  - Pledge form (flat amount option with preset $25/$50/$100 and custom)
-  - Supporter signup/login flow integrated in pledge form
-  - **Social Share Buttons** (Facebook, X/Twitter, LinkedIn, WhatsApp, Email, Copy link)
-- **Supporter Dashboard** (`/supporter-dashboard`) showing:
-  - Stats: Active pledges, walkers supported, total pledged
-  - Pledge cards with walker info, progress bar, pledge amount
-  - Link to walker's fundraising page
-  - CTA to discover more walkers via leaderboard
-- **Role-based Navigation**:
-  - Walkers: Dashboard, Activity, Team, Supporters, Leaderboard
-  - Supporters: Dashboard, Leaderboard
-  - Admin: Admin, Leaderboard
-- **Login redirect** based on role (supporters → /supporter-dashboard)
-- Backend APIs: POST /api/pledges, POST /api/supporters/signup, GET /api/supporters/dashboard
-
-### 2026-03-06 - Teammate Signup & Enhanced Team Page
-- **Teammate Signup Page** (`/teams/join/{inviteCode}`) with 2-part flow:
-  - Part 1: Account creation (Full Name, Display Name, Email, Password, Confirm Password) with Login toggle
-  - Part 2: Challenge selection, Walker Type selection, Achievement Levels table, Invite Supporters (optional), Fundraising link, Mock Payment
-  - Auto-joins team after account creation
-- **Enhanced Team Page** (`/team`):
-  - Team Leader badge and "Led by [name]" subtitle
-  - **Avg Completion %** stat card
-  - Member table with progress bars and percentage
-  - Leader can see "Invite Members" button
-  - **Leader can remove non-leader members** (trash icon)
-- Backend APIs: DELETE /api/teams/members/{member_id}, Enhanced GET /api/teams/my with leader info and avg_progress_pct
-
-### 2026-03-06 - Corporate Sponsors Feature
-- **Admin Sponsorship Levels CRUD**:
-  - Create/Edit/Delete sponsorship levels (Title, Gold, Silver)
-  - Configure max sponsors per level (Title=1, Gold=5, Silver=15)
-  - Display order for home page sorting
-- **Admin Corporate Sponsors CRUD**:
-  - Create/Edit/Delete sponsors with name, level, website URL
-  - **Logo upload** (PNG, JPEG, WebP, SVG supported)
-  - Served from `/api/uploads/` static files
-- **Home Page Sponsors Section**:
-  - "Thank You to Our Sponsors" section
-  - Sponsors grouped by level (Title → Gold → Silver)
-  - Clickable logo/name cards linking to sponsor websites
-- Backend APIs: Full CRUD for `/api/sponsorship-levels` and `/api/corporate-sponsors`, Logo upload at POST `/api/corporate-sponsors/{id}/logo`
-
-### 2026-03-06 - Admin Enhancements & Become a Sponsor
-- **"Become a Sponsor" Form** (Landing Page):
-  - Contact form with Company Name, Contact Person, Email, Phone, Interested Level, Message
-  - Public submission creates inquiry in database
-  - Success confirmation displayed after submit
-- **Admin Sponsor Inquiries Tab**:
-  - View all sponsor inquiries with badge count for new ones
-  - Status management: New → Contacted → Confirmed / Declined
-  - Full contact details and message display
-- **Enhanced Challenge CRUD**:
-  - **Active/Inactive toggle** - Deactivate without deleting
-  - **Unique name validation**
-  - **Description limits** (50-2000 characters with counter)
-  - **Route map uploads**: POST `/api/challenges/{id}/route-map` and `/route-map-markers`
-  - **Milestone image uploads**: POST `/api/challenges/{id}/milestones/{index}/image`
-- Backend validation: Unique names, description length, file type restrictions
-
-## Seed Accounts
+## Test Credentials
 - Admin: sabrina@kenyaeducationfund.org / admin123
 - Walker 1: john@example.com / walker123
 - Walker 2: mary@example.com / walker123
 - Supporter: supporter1@test.com / test1234
 
-## Prioritized Backlog
+## What's Implemented (Phase 1 - March 2026)
+### Punch List Items Completed (March 22, 2026)
+- [x] F1-F4: Fundraising page redesign - pledge form as main CTA, new headlines, two side-by-side options
+- [x] F5: Number input arrows removed
+- [x] F6: Combined pledge calculation (Total + Per KM added together)
+- [x] F7: GiveButter placeholder on fundraising page
+- [x] H2: "Choose Your Route" CTA under challenge cards
+- [x] H4: Renamed form button to "Become a Sponsor"
+- [x] P1: Leaderboard walker names clickable → fundraising pages
+- [x] A1: Admin stats table by challenge (walkers, teams, pledged)
+- [x] A4: Admin user deletion
+- [x] W2: Team page logic fix (MongoDB aggregation fixed)
+- [x] W3: Team page redesign with invite section, invite link
+- [x] W4: Walker profile picture upload
+- [x] S1-S2: Team search auto-search with debounce
+- [x] S3: 3 default supporter invite rows
+- [x] B1: GiveButter placeholder (needs embed code)
+- [x] B2: Stripe code removed, replaced with GiveButter service
 
-### P0 (Completed)
-- [x] Auth system
-- [x] Challenge management
-- [x] Activity logging
-- [x] Teams with invite links
-- [x] Basic fundraising pages
-- [x] Leaderboards
-- [x] Admin console
-- [x] Walker Types & Achievement Levels separation
-- [x] Multi-step onboarding wizard
-- [x] **Supporter pledge system (flat amount pledges)**
-- [x] **Supporter Dashboard**
-- [x] **Social Share buttons on Fundraising page**
-- [x] **Teammate Signup 2-part flow**
-- [x] **Enhanced Team Page** (leader display, avg completion %, member removal)
-- [x] **Corporate Sponsors** (Admin CRUD for levels & sponsors, logo upload, home page display)
-- [x] **"Become a Sponsor" contact form** (landing page + admin inquiries view)
-- [x] **Challenge Active/Inactive toggle**
-- [x] **Enhanced Challenge validation** (unique names, description limits)
-- [x] **Challenge route map & milestone image uploads**
+## Remaining Punch List Items (P1/P2)
+- [ ] A2/W1: Challenge route map display with admin-uploaded map images
+- [ ] A3: Verify sponsor logo upload working (needs manual test)
+- [ ] B3-B5: Email system (SendGrid integration + admin CRUD templates)
+- [ ] T1: Teammate signup flow verification
+- [ ] Update FREELANCER_HANDOFF.md and QUICK_START.md after all items done
 
-### P1 (Upcoming)
-- [ ] Walker profile picture upload
-- [ ] Automated supporter billing notifications
-- [ ] Shareable achievement certificates
-- [ ] Route map visual progress indicator (Option B: static map with position marker)
-
-### P2 (Future)
-- [ ] Stripe payment integration (replace mock payment) - **Payment service module ready**
-- [ ] Magic link/passwordless login
-- [ ] Email notifications for sponsors
-- [ ] Deep analytics dashboard
-- [ ] Open Graph meta tags for social preview images
-
-## Technical Architecture
-
-### Services Module (`/app/backend/services/`)
-- **payment_service.py** - Centralized payment logic with Stripe-ready interfaces
-  - `PaymentService` class with donation, transaction, and pricing level operations
-  - Models: `Donation`, `Transaction`, `PricingLevel`, `PaymentStatus`, `PaymentMethod`, `Currency`
-  - Placeholder methods for Stripe PaymentIntent, webhooks, and refunds
-  
-- **google_fit_service.py** - Google Fit API integration
-  - OAuth 2.0 flow (authorization URL, token exchange, refresh)
-  - Step count retrieval (daily, historical)
-  - Sync endpoint to import steps as activities
-
-### Google Fit Setup Instructions
-To enable Google Fit integration:
-1. Create project in Google Cloud Console
-2. Enable Fitness API
-3. Create OAuth 2.0 credentials (Web application)
-4. Set authorized redirect URI: `{BACKEND_URL}/api/fitness/callback`
-5. Add environment variables to backend/.env:
-   ```
-   GOOGLE_FIT_CLIENT_ID=your_client_id
-   GOOGLE_FIT_CLIENT_SECRET=your_client_secret
-   GOOGLE_FIT_REDIRECT_URI=https://your-domain.com/api/fitness/callback
-   FRONTEND_URL=https://your-frontend-domain.com
-   ```
-
-### Stripe Setup Instructions (When Ready)
-1. Install stripe package: `pip install stripe`
-2. Add environment variables:
-   ```
-   STRIPE_API_KEY=sk_live_xxx
-   STRIPE_WEBHOOK_SECRET=whsec_xxx
-   ```
-3. Implement methods in `PaymentService`:
-   - `create_stripe_payment_intent()`
-   - `confirm_stripe_payment()`
-   - `process_stripe_webhook()`
-
+## MOCKED Features
+- **GiveButter**: Placeholder UI only - needs real embed code from user
+- **Google Fit**: Backend OAuth skeleton - needs Google API credentials
+- **Email notifications**: Not yet implemented - needs SendGrid integration
