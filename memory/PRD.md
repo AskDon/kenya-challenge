@@ -36,26 +36,28 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 ## Core Features (Implemented)
 - Multi-role authentication (Admin, Walker, Supporter)
 - Admin CRUD: Challenges, Walker Types, Achievement Levels, Corporate Sponsors, Sponsorship Levels
-- Admin Stats dashboard with per-challenge breakdown
+- Admin Stats dashboard with per-challenge breakdown table
 - Admin user management with deletion
-- Walker onboarding: multi-step flow with challenge/type selection, team join/create
+- Admin route map upload + milestone photo upload per challenge
+- Walker onboarding: multi-step flow with challenge/type selection, photo upload, team join/create
 - Team creation, management, invite by code and email
 - Manual activity logging + Google Fit placeholder
 - Route progress visualization with milestone markers
-- Leaderboards (distance, raised) with clickable walker names
-- Public fundraising pages per walker
-- Two-option pledge system (Total + Per KM, combinable)
-- Supporter signup/login flow from fundraising page
+- Leaderboards (distance, raised) with clickable walker names → fundraising pages
+- Public fundraising pages per walker with redesigned pledge form
+- Two-option pledge system (Total + Per KM, combinable) - amounts calculated at FULL route distance
+- Supporter signup/login from fundraising page → redirect to supporter dashboard
 - Social sharing buttons
-- Corporate sponsors display on landing page
-- Sponsor inquiry form ("Become a Sponsor")
-- Walker profile picture upload
+- Corporate sponsors display on landing page with proper spacing between levels
+- "Become a Sponsor" section (text + email link, no form)
+- Walker profile picture upload (dashboard + onboarding)
 - GiveButter payment placeholder
+- Horizontal scroll for challenge cards (supports >3 challenges)
 
 ## Database Collections
 - `users`, `challenges`, `teams`, `pledges`, `activities`
 - `walker_types`, `achievement_levels`, `sponsors`
-- `corporate_sponsors`, `sponsorship_levels`, `sponsor_inquiries`
+- `corporate_sponsors`, `sponsorship_levels`
 - `supporter_invites`, `app_config`, `donations`
 
 ## Test Credentials
@@ -64,8 +66,9 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 - Walker 2: mary@example.com / walker123
 - Supporter: supporter1@test.com / test1234
 
-## What's Implemented (Phase 1 - March 2026)
-### Punch List Items Completed (March 22, 2026)
+## What's Implemented
+
+### Punch List Items Completed - March 22, 2026 Batch 1
 - [x] F1-F4: Fundraising page redesign - pledge form as main CTA, new headlines, two side-by-side options
 - [x] F5: Number input arrows removed
 - [x] F6: Combined pledge calculation (Total + Per KM added together)
@@ -83,12 +86,30 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 - [x] B1: GiveButter placeholder (needs embed code)
 - [x] B2: Stripe code removed, replaced with GiveButter service
 
-## Remaining Punch List Items (P1/P2)
-- [ ] A2/W1: Challenge route map display with admin-uploaded map images
-- [ ] A3: Verify sponsor logo upload working (needs manual test)
-- [ ] B3-B5: Email system (SendGrid integration + admin CRUD templates)
-- [ ] T1: Teammate signup flow verification
-- [ ] Update FREELANCER_HANDOFF.md and QUICK_START.md after all items done
+### March 22, 2026 Batch 2 - User Feedback Fixes
+- [x] HOME: Horizontal scroll for >3 challenges
+- [x] HOME: Pricing changed to $1,250 / $5,000 with new descriptions
+- [x] HOME: Sponsor spacing fixed between levels (space-y-16)
+- [x] HOME: "Become a Sponsor" form removed, replaced with email contact text
+- [x] WALKER: "Habari" → "Karibuni" greeting
+- [x] WALKER: Leave Team button made subtle/ghost
+- [x] SUPPORTER: Pledge amounts now show FULL route completion totals ($450 not $116.90)
+- [x] SUPPORTER: MaryMoves = $400 (200km x $2/km), JohnnySteps = $50
+- [x] FUNDRAISE: Supporter redirected to /supporter-dashboard after pledge
+- [x] SIGNUP: Optional photo upload in onboarding
+- [x] SIGNUP: Achievement Levels now informational table (Level/Amount/Swag)
+- [x] SIGNUP: Invite Supporters + Share Fundraising merged into one section
+- [x] TEAMMATE SIGNUP: Matches normal signup flow (photo upload, achievement table, invite+share)
+- [x] ADMIN: Inquiries tab removed
+- [x] ADMIN: Route map upload per challenge
+- [x] ADMIN: Milestone photo upload per challenge
+- [x] ADMIN: Sponsor level selector shows capacity (count/max)
+- [x] ALL: Normal width buttons (not full-width)
+- [x] BACKEND: Leaderboard raised includes pledges + walker_fee + sponsors
+
+## Remaining Items
+- [ ] Email system (SendGrid integration + admin templates) - user promoted to higher priority
+- [ ] Update FREELANCER_HANDOFF.md and QUICK_START.md with all changes
 
 ## MOCKED Features
 - **GiveButter**: Placeholder UI only - needs real embed code from user
