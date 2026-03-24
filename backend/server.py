@@ -543,8 +543,11 @@ async def mark_paid(user=Depends(get_current_user)):
 
 @api_router.get("/activities")
 async def list_activities(user=Depends(get_current_user)):
+    activity_filter = {"user_id": user["id"]}
+    if user.get("challenge_started_at"):
+        activity_filter["created_at"] = {"$gte": user["challenge_started_at"]}
     activities = await db.activities.find(
-        {"user_id": user["id"]}, {"_id": 0}
+        activity_filter, {"_id": 0}
     ).sort("date", -1).to_list(1000)
     return activities
 
@@ -1040,7 +1043,10 @@ async def get_fundraising_page(walker_id: str):
         walker_type = await db.walker_types.find_one({"id": walker["walker_type_id"]}, {"_id": 0})
         if walker_type and walker.get("paid"):
             walker_fee = walker_type.get("cost_usd", 0)
-    activities = await db.activities.find({"user_id": walker_id}, {"_id": 0}).to_list(10000)
+    activity_filter = {"user_id": walker_id}
+    if walker.get("challenge_started_at"):
+        activity_filter["created_at"] = {"$gte": walker["challenge_started_at"]}
+    activities = await db.activities.find(activity_filter, {"_id": 0}).to_list(10000)
     total_km = round(sum(a.get("km", 0) for a in activities), 2)
     total_steps = sum(a.get("steps", 0) for a in activities)
     sponsors = await db.sponsors.find(
@@ -1412,8 +1418,12 @@ async def admin_stats_by_challenge(user=Depends(get_admin_user)):
 
 @api_router.get("/users/progress")
 async def get_user_progress(user=Depends(get_current_user)):
+    # Filter activities by challenge_started_at if present (for walkers on 2nd+ challenge)
+    activity_filter = {"user_id": user["id"]}
+    if user.get("challenge_started_at"):
+        activity_filter["created_at"] = {"$gte": user["challenge_started_at"]}
     activities = await db.activities.find(
-        {"user_id": user["id"]}, {"_id": 0}
+        activity_filter, {"_id": 0}
     ).sort("date", -1).to_list(10000)
     total_km = round(sum(a.get("km", 0) for a in activities), 2)
     total_steps = sum(a.get("steps", 0) for a in activities)
@@ -1490,7 +1500,49 @@ async def get_user_progress(user=Depends(get_current_user)):
         "team": team,
         "recent_activities": activities[:10],
         "sponsors_count": len(sponsors),
+        "completed_challenges": user.get("completed_challenges", []),
     }
+
+
+@api_router.post("/users/start-new-challenge")
+async def start_new_challenge(user=Depends(get_current_user)):
+    """Archive completed challenge and prepare for a new one"""
+    if not user.get("challenge_id"):
+        raise HTTPException(status_code=400, detail="No current challenge to complete")
+
+    # Get current challenge info
+    challenge = await db.challenges.find_one({"id": user["challenge_id"]}, {"_id": 0})
+
+    # Calculate current progress
+    activity_filter = {"user_id": user["id"]}
+    if user.get("challenge_started_at"):
+        activity_filter["created_at"] = {"$gte": user["challenge_started_at"]}
+    activities = await db.activities.find(activity_filter, {"_id": 0}).to_list(10000)
+    total_km = round(sum(a.get("km", 0) for a in activities), 2)
+    total_steps = sum(a.get("steps", 0) for a in activities)
+
+    # Archive the completed challenge
+    completed_entry = {
+        "challenge_id": user["challenge_id"],
+        "challenge_name": challenge["name"] if challenge else "Unknown",
+        "walker_type_id": user.get("walker_type_id"),
+        "total_km": total_km,
+        "total_steps": total_steps,
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Reset user for new challenge selection
+    await db.users.update_one({"id": user["id"]}, {
+        "$push": {"completed_challenges": completed_entry},
+        "$set": {
+            "challenge_id": None,
+            "walker_type_id": None,
+            "paid": False,
+            "challenge_started_at": datetime.now(timezone.utc).isoformat(),
+        }
+    })
+
+    return {"message": "Challenge archived. Ready for a new challenge!", "completed": completed_entry}
 
 
 # ==========================================

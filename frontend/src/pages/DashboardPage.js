@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
-import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2, Flag, Camera } from 'lucide-react';
+import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2, Flag, Camera, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
 
 const ROUTE_BG = 'https://images.unsplash.com/photo-1759767119566-e7dad33d540b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
@@ -128,9 +128,11 @@ function RouteMap({ challenge, totalKm, progressPct, milestones }) {
 
 export default function DashboardPage() {
   const { user, fetchUser } = useAuth();
+  const navigate = useNavigate();
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadingPic, setUploadingPic] = useState(false);
+  const [startingNew, setStartingNew] = useState(false);
   const picInputRef = useRef(null);
 
   useEffect(() => {
@@ -165,6 +167,20 @@ export default function DashboardPage() {
       toast.error('Failed to upload picture');
     } finally {
       setUploadingPic(false);
+    }
+  };
+
+  const handleStartNewChallenge = async () => {
+    setStartingNew(true);
+    try {
+      await api.post('/users/start-new-challenge');
+      toast.success('Challenge archived! Choose your next adventure.');
+      if (fetchUser) await fetchUser();
+      navigate('/onboarding');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to start new challenge');
+    } finally {
+      setStartingNew(false);
     }
   };
 
@@ -213,13 +229,41 @@ export default function DashboardPage() {
           </div>
         </div>
         {hasChallenge && isComplete && (
-          <Link to="/onboarding">
-            <Button className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium px-6 py-5 h-auto" data-testid="start-next-challenge-btn">
-              Start Your Next Challenge <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
+          <div /> /* Handled by big card below */
         )}
       </div>
+
+      {/* BIG BOLD: Start Your Next Challenge - shown when challenge complete */}
+      {hasChallenge && isComplete && (
+        <Card className="bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl border-none shadow-xl shadow-orange-600/20 mb-8" data-testid="next-challenge-card">
+          <CardContent className="p-8 md:p-10 text-center">
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
+              <Trophy className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Challenge Complete!
+            </h2>
+            <p className="text-orange-100 mb-2">
+              You finished <span className="font-bold text-white">{progress?.challenge?.name}</span> — {progress?.challenge?.total_distance_km}km!
+            </p>
+            {progress?.completed_challenges?.length > 0 && (
+              <p className="text-orange-200 text-sm mb-4">
+                <Star className="w-3.5 h-3.5 inline mr-1" />
+                {progress.completed_challenges.length + 1} challenge{progress.completed_challenges.length > 0 ? 's' : ''} completed
+              </p>
+            )}
+            <Button
+              onClick={handleStartNewChallenge}
+              disabled={startingNew}
+              className="rounded-full bg-white text-orange-700 hover:bg-orange-50 font-bold px-10 py-6 h-auto text-lg shadow-lg transition-all hover:scale-[1.02]"
+              data-testid="start-next-challenge-btn"
+            >
+              {startingNew ? 'Setting up...' : 'Start Your Next Challenge'}
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {!hasChallenge ? (
         <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
