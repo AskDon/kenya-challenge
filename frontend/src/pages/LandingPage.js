@@ -263,13 +263,13 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="space-y-16">
-              {sponsors.map(({ level, sponsors: levelSponsors }) => (
-                <div key={level.id} className="text-center" data-testid={`sponsor-level-${level.id}`}>
-                  <h3 className="text-lg font-bold text-stone-800 mb-2 inline-block border-b-2 border-orange-300 pb-1">
+            <div>
+              {sponsors.map(({ level, sponsors: levelSponsors }, idx) => (
+                <div key={level.id} className={`text-center ${idx > 0 ? 'mt-12' : ''}`} data-testid={`sponsor-level-${level.id}`}>
+                  <h3 className="text-lg font-bold text-stone-800 inline-block border-b-2 border-orange-300 pb-1">
                     {level.name}
                   </h3>
-                  <div className="flex flex-wrap justify-center items-center gap-8 mt-4">
+                  <div className="flex flex-wrap justify-center items-center gap-8 mt-2">
                     {levelSponsors.map(sponsor => (
                       <a
                         key={sponsor.id}
