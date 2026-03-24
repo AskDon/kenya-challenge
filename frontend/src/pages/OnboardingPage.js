@@ -81,6 +81,7 @@ export default function OnboardingPage() {
       }, searchQuery ? 300 : 0);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, teamChoice]);
 
   const joinTeam = async (inviteCode) => {

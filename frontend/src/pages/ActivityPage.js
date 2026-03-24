@@ -56,6 +56,7 @@ export default function ActivityPage() {
     } else if (searchParams.get('fitness_error') === 'true') {
       toast.error('Failed to connect Google Fit');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const handleConnectGoogleFit = async () => {

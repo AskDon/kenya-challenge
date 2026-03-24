@@ -97,6 +97,7 @@ export default function FundraisingPage() {
       .finally(() => setLoading(false));
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadData(); }, [userId]);
 
   // Compute combined pledge total
