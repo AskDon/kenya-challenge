@@ -107,11 +107,18 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 - [x] ALL: Normal width buttons (not full-width)
 - [x] BACKEND: Leaderboard raised includes pledges + walker_fee + sponsors
 
+### March 24, 2026 - Challenge Reordering
+- [x] ADMIN: Challenge re-ordering with up/down arrows (like Walker Types & Achievement Levels)
+- [x] BACKEND: POST /api/challenges/reorder endpoint with ordered_ids array
+- [x] BACKEND: display_order field added to challenges, auto-increment on create
+- [x] BACKEND: All challenge list endpoints sort by display_order
+- [x] FRONTEND: ChevronUp/ChevronDown buttons per challenge, first/last disabled appropriately
+
 ## Remaining Items
-- [ ] Email system (SendGrid integration + admin templates) - user promoted to higher priority
+- [ ] Email system (Mailchimp integration + transactional emails for pledge notifications)
 - [ ] Update FREELANCER_HANDOFF.md and QUICK_START.md with all changes
 
 ## MOCKED Features
 - **GiveButter**: Placeholder UI only - needs real embed code from user
 - **Google Fit**: Backend OAuth skeleton - needs Google API credentials
-- **Email notifications**: Not yet implemented - needs SendGrid integration
+- **Email notifications**: Not yet implemented - needs Mailchimp integration
