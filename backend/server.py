@@ -69,6 +69,7 @@ class ChallengeCreate(BaseModel):
     route_map_url: Optional[str] = None
     route_map_markers_url: Optional[str] = None
     is_active: Optional[bool] = True
+    display_order: int = 0
 
 class ChallengeUpdate(BaseModel):
     name: Optional[str] = None
@@ -79,6 +80,7 @@ class ChallengeUpdate(BaseModel):
     route_map_url: Optional[str] = None
     route_map_markers_url: Optional[str] = None
     is_active: Optional[bool] = None
+    display_order: Optional[int] = None
 
 class WalkerTypeCreate(BaseModel):
     name: str
@@ -291,12 +293,12 @@ async def upload_profile_picture(file: UploadFile = File(...), user=Depends(get_
 
 @api_router.get("/challenges")
 async def list_challenges():
-    challenges = await db.challenges.find({"is_active": {"$ne": False}}, {"_id": 0}).to_list(100)
+    challenges = await db.challenges.find({"is_active": {"$ne": False}}, {"_id": 0}).sort("display_order", 1).to_list(100)
     return challenges
 
 @api_router.get("/challenges/all")
 async def list_all_challenges(user=Depends(get_admin_user)):
-    challenges = await db.challenges.find({}, {"_id": 0}).to_list(100)
+    challenges = await db.challenges.find({}, {"_id": 0}).sort("display_order", 1).to_list(100)
     return challenges
 
 @api_router.get("/challenges/{challenge_id}")
@@ -317,6 +319,8 @@ async def create_challenge(req: ChallengeCreate, user=Depends(get_admin_user)):
         raise HTTPException(status_code=400, detail="Description must be at least 50 characters")
     if len(req.description) > 2000:
         raise HTTPException(status_code=400, detail="Description must be at most 2000 characters")
+    max_order_doc = await db.challenges.find_one({}, sort=[("display_order", -1)])
+    next_order = (max_order_doc.get("display_order", 0) + 1) if max_order_doc else 1
     challenge = {
         "id": str(uuid.uuid4()),
         "name": req.name,
@@ -327,6 +331,7 @@ async def create_challenge(req: ChallengeCreate, user=Depends(get_admin_user)):
         "route_map_url": req.route_map_url,
         "route_map_markers_url": req.route_map_markers_url,
         "is_active": req.is_active if req.is_active is not None else True,
+        "display_order": req.display_order or next_order,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.challenges.insert_one(challenge)
@@ -360,6 +365,16 @@ async def delete_challenge(challenge_id: str, user=Depends(get_admin_user)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Challenge not found")
     return {"message": "Challenge deleted"}
+
+@api_router.post("/challenges/reorder")
+async def reorder_challenges(data: dict, user=Depends(get_admin_user)):
+    ordered_ids = data.get("ordered_ids", [])
+    if not ordered_ids:
+        raise HTTPException(status_code=400, detail="ordered_ids required")
+    for i, cid in enumerate(ordered_ids):
+        await db.challenges.update_one({"id": cid}, {"$set": {"display_order": i + 1}})
+    return {"message": "Challenges reordered"}
+
 
 @api_router.post("/challenges/{challenge_id}/route-map")
 async def upload_challenge_route_map(challenge_id: str, file: UploadFile = File(...), user=Depends(get_admin_user)):
@@ -1600,6 +1615,7 @@ async def seed_data():
             ],
             "image_url": "",
             "active": True,
+            "display_order": 1,
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {
@@ -1616,6 +1632,7 @@ async def seed_data():
             ],
             "image_url": "",
             "active": True,
+            "display_order": 2,
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
         {
@@ -1632,6 +1649,7 @@ async def seed_data():
             ],
             "image_url": "",
             "active": True,
+            "display_order": 3,
             "created_at": datetime.now(timezone.utc).isoformat(),
         },
     ]
@@ -2149,6 +2167,10 @@ async def disconnect_google_fit(user=Depends(get_current_user)):
 @app.on_event("startup")
 async def startup():
     await seed_data()
+    # Migrate: add display_order to existing challenges that don't have it
+    challenges = await db.challenges.find({"display_order": {"$exists": False}}, {"_id": 0, "id": 1}).to_list(1000)
+    for i, ch in enumerate(challenges):
+        await db.challenges.update_one({"id": ch["id"]}, {"$set": {"display_order": i + 1}})
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

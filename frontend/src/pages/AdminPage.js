@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from '../components/ui/switch';
 import api from '../lib/api';
 import { toast } from 'sonner';
-import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image, Mail, Phone, CheckCircle, Clock, XCircle, MapPin } from 'lucide-react';
+import { BarChart3, Mountain, DollarSign, Users, Settings, Plus, Pencil, Trash2, Building2, Award, Footprints, Upload, X, Image, Mail, Phone, CheckCircle, Clock, XCircle, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
 
 export default function AdminPage() {
   const [stats, setStats] = useState(null);
@@ -258,6 +258,18 @@ function ChallengesAdmin({ challenges, onRefresh }) {
     } catch { toast.error('Failed to delete'); }
   };
 
+  const handleMove = async (index, direction) => {
+    const sorted = [...challenges];
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= sorted.length) return;
+    [sorted[index], sorted[targetIndex]] = [sorted[targetIndex], sorted[index]];
+    const ordered_ids = sorted.map(c => c.id);
+    try {
+      await api.post('/challenges/reorder', { ordered_ids });
+      onRefresh();
+    } catch { toast.error('Failed to reorder'); }
+  };
+
   const handleUploadMap = async (challengeId, file) => {
     setUploadingMap(challengeId);
     try {
@@ -346,10 +358,18 @@ function ChallengesAdmin({ challenges, onRefresh }) {
           </Dialog>
         </div>
         <div className="space-y-3">
-          {challenges.map(ch => (
+          {challenges.map((ch, idx) => (
             <div key={ch.id} className={`rounded-xl ${ch.is_active !== false ? 'bg-stone-50' : 'bg-stone-100 opacity-60'}`} data-testid={`admin-challenge-${ch.id}`}>
               <div className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" disabled={idx === 0} onClick={() => handleMove(idx, -1)} data-testid={`challenge-move-up-${ch.id}`}>
+                      <ChevronUp className="w-4 h-4 text-stone-500" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" disabled={idx === challenges.length - 1} onClick={() => handleMove(idx, 1)} data-testid={`challenge-move-down-${ch.id}`}>
+                      <ChevronDown className="w-4 h-4 text-stone-500" />
+                    </Button>
+                  </div>
                   <Switch 
                     checked={ch.is_active !== false} 
                     onCheckedChange={() => handleToggleActive(ch)}
@@ -360,7 +380,7 @@ function ChallengesAdmin({ challenges, onRefresh }) {
                       <p className="text-sm font-medium text-stone-900">{ch.name}</p>
                       {ch.is_active === false && <Badge className="bg-stone-200 text-stone-500 text-[10px] rounded-full">Inactive</Badge>}
                     </div>
-                    <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones</p>
+                    <p className="text-xs text-stone-400">{ch.total_distance_km} km &middot; {ch.milestones?.length || 0} milestones &middot; Order: {ch.display_order || idx + 1}</p>
                   </div>
                 </div>
                 <div className="flex gap-1">
