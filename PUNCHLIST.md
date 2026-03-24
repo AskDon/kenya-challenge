@@ -2,7 +2,7 @@
 
 ## Status: Production Prototype Complete
 **Live URL:** https://virtual-trek.emergent.host
-**Preview URL:** https://walking-kef.preview.emergentagent.com
+**Preview URL:** https://challenge-admin-1.preview.emergentagent.com
 
 ---
 

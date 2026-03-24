@@ -4,68 +4,93 @@
 The user wants to build The Kenya Challenge, a web and mobile-friendly application for the charity KEF (Kenya Education Fund). The application's goal is to facilitate virtual walking challenges along Kenyan routes combined with peer-to-peer fundraising.
 
 **PRODUCT REQUIREMENTS:**
-The full product requirements have been captured in . A comprehensive list of outstanding fixes, bugs, and feature enhancements has been provided by the user and is stored in . This punchlist is the current source of truth for all work.
+The full product requirements are captured in . The user provides iterative feedback and punch lists which dictate the immediate work priorities.
 
 **User's preferred language**: English
 
 **what currently exists?**
-A full-stack application using React, FastAPI, and MongoDB has been built. It includes multi-role authentication (Admin, Walker, Supporter), a comprehensive admin panel for CRUD operations on dynamic content (Challenges, Walker Types, Sponsors, etc.), a multi-step walker onboarding flow, team creation/management, manual and placeholder Google Fit activity logging, leaderboards, and a complete public fundraising and supporter pledge workflow. The project's deployment readiness has been checked and all critical N+1 query issues have been resolved. Freelancer handoff documents have been created.
+A comprehensive full-stack application (React/FastAPI/MongoDB) is in place. It features multi-role authentication, a detailed admin panel, walker onboarding, team management, manual activity logging, and a full supporter pledge/fundraising flow. In this session, a vast number of user-requested fixes and features from a punch list were implemented, including major UI redesigns, backend logic corrections, and new feature additions. The application is stable and has passed multiple rounds of automated testing.
 
 **Last working item**:
-- **Last item agent was working:** The user provided a large and detailed punch list of fixes and feature requests. The agent created  to track these items and had just begun implementing the first few UI changes on the . The user expressed frustration, urging the agent to proceed with the fixes.
-- **Status:** IN PROGRESS
+- **Last item agent was working:** The user requested the ability for an Admin to change the display order of Challenges, similar to the existing functionality for Walker Types and Achievement Levels. The agent had just started investigating the relevant files.
+- **Status:** NOT STARTED
 - **Agent Testing Done:** N
 - **Which testing method agent to use?** both
 - **User Testing Done:** N
 
 **All Pending/In progress Issue list**:
-The primary task is to work through all items on the user-provided punch list, which has been saved to . This list is now the definitive guide for all pending work.
+- **Issue 1: Implement Challenge Re-ordering (P0)**
+  - Description: Admins need the ability to re-order the list of challenges displayed to users.
+  - Status: NOT STARTED
+- **Issue 2: Mailchimp Integration for Transactional Emails (P1)**
+  - Description: The user wants to use Mailchimp (instead of SendGrid) to send email notifications, such as when a walker receives a new pledge.
+  - Status: NOT STARTED
 
-- **Issue 1: Implement Full User Punch List (P0)**
-  - **Description**: Address all items from , which includes bugs, UI/UX improvements, and feature changes across the entire application.
-  - **Status**: IN PROGRESS
+**Issues Detail**:
+- **Issue 1: Implement Challenge Re-ordering**
+  - **Attempted fixes:** The agent ran  commands to locate existing re-ordering logic in  and  for other data models, but no code was written.
+  - **Next debug checklist**:
+    1.  **Backend ():** Add an  integer field to the  data model. Create a new endpoint (e.g., ) that accepts an array of challenge IDs in the new order and updates the  field for each document in the database.
+    2.  **Frontend ():** In the  component, add up/down arrow buttons next to each challenge in the list.
+    3.  Implement handler functions for these buttons that call the new backend re-ordering endpoint.
+    4.  Fetch and sort the challenges based on the  field to ensure the UI reflects the new order.
+  - **Why fix this issue and what will be achieved with the fix?**: This will give the site administrator control over the presentation and priority of virtual challenges on the landing page.
+  - **Status**: NOT STARTED
   - **Is recurring issue?**: N
   - **Should Test frontend/backend/both after fix?**: both
   - **Blocked on other issue**: None
-
-**Issues Detail**:
-- **Issue 1: Implement Full User Punch List**
-  - **Attempted fixes:** The agent created the  file and started working on the first items related to the home page UI before the session ended.
+- **Issue 2: Mailchimp Integration for Transactional Emails**
+  - **Attempted fixes:** None.
   - **Next debug checklist**:
-    1.  **Read ** to get the full scope of work.
-    2.  **Start with the highest priority items from the punch list**:
-        - **Supporter Sign-Up (Fundraising Page)**: Redesign the pledge form to be the main, centered CTA.
-        - **Walker Functions (Team Page)**: Fix the logic to show either the Create Team form or the team management view.
-        - **Homepage**: Implement UI changes (remove button, add CTA).
-        - **Leaderboard**: Make walker names clickable links to their fundraising pages.
-    3.  Systematically work through the rest of the list, covering Backend, Admin, and other Sign-Up flow fixes.
-    4.  Update the freelancer handoff documents (, ) as the final step.
-  - **Why fix this issue and what will be achieved with the fix?**: This will address all of the user's outstanding feedback and bring the application to a state they consider complete and ready for hardening by a freelancer.
+    1.  Use the  tool with the query Mailchimp transactional email or Mandrill integration to get the correct playbook.
+    2.  Follow the playbook to install the necessary Python library.
+    3.  Ask the user for the Mailchimp API key and add it to .
+    4.  Create a new service module  to encapsulate Mailchimp API calls.
+    5.  Integrate the email service into the  function in  to send a notification to the walker.
+  - **Why fix this issue and what will be achieved with the fix?**: Fulfills a user request to enhance engagement by notifying users of important events.
+  - **Status**: NOT STARTED
+  - **Is recurring issue?**: N
+  - **Should Test frontend/backend/both after fix?**: backend
+  - **Blocked on other issue**: None
 
 **In progress Task List**:
-- **Task 1: Implement User Punch List (P0)**
-  - **Where to resume**: Review  and continue implementing the changes, starting with the high-impact frontend fixes on the Fundraising Page, Team Page, and Landing Page.
-  - **What will be achieved with this?**: A fully functional application that meets all of the user's latest requirements.
-  - **Status**: IN PROGRESS
-  - **Should Test frontend/backend/both after fix?**: both
-  - **Blocked on something**: No.
+- None.
 
 **Upcoming and Future Tasks**
-All previously planned tasks are now superseded by the user's punch list. The sole focus is on completing the items in .
+- **Upcoming Tasks:**
+  - (P0) Implement Challenge Re-ordering in the Admin panel.
+  - (P1) Implement Mailchimp integration for transactional emails.
+- **Future Tasks:**
+  - Real-time route map visualization using Mapbox or Leaflet (V2 feature).
+  - Automated activity syncing with Google Fit.
 
 **Completed work in this session**
-- **Public Fundraising & Supporter Flow**: Implemented the complete frontend and backend for supporters to find walkers, make pledges, and view their pledges on a dedicated dashboard.
-- **Team Enhancements**: Implemented a two-part teammate signup flow and enhanced the Team Page to show leader controls, average progress, and member details.
-- **Social Sharing**: Added social media sharing buttons to the public fundraising page.
-- **Corporate Sponsors Feature**: Built a full CRUD system in the Admin panel for managing Sponsorship Levels and individual Corporate Sponsors with logo uploads. Sponsors are now displayed on the public landing page.
-- **Become a Sponsor Form**: Added a contact form to the landing page for sponsorship inquiries, with a corresponding viewing area in the Admin panel.
-- **Admin & Challenge Enhancements**: Added the ability for admins to toggle challenges as active/inactive.
-- **Deployment Health Check**: Ran deployment analysis and fixed multiple critical N+1 query performance issues and an ObjectId serialization bug, making the app deployment-ready.
-- **Integration Prep**: Added placeholder services for Google Fit and Stripe (the latter is now to be removed).
-- **Documentation**: Created  and  to assist with bringing on another developer.
+- **Massive Punch List Implementation**: Completed and tested over 16 distinct items from the user's detailed punch list.
+- **Home Page Overhaul**:
+  - Implemented horizontal scrolling with arrow buttons for the Choose Your Challenge section.
+  - Corrected sponsor section spacing to match user's detailed layout requirements.
+  - Updated the pricing/impact examples.
+  - Removed the Become a Sponsor form, replacing it with an email link.
+- **Walker & Supporter Experience Fixes**:
+  - Changed dashboard greeting to Karibuni.
+  - Corrected pledge calculations on supporter dashboards and leaderboards to use the full challenge distance, not partial progress.
+  - Ensured supporters are redirected to their own dashboard after making a pledge.
+  - Updated the public fundraising page to display the walker's  to avoid confusion.
+- **New Feature: Start New Challenge**:
+  - Implemented a complete flow for walkers who have finished a challenge to start a new one.
+  - **Backend**: Created a  endpoint that archives the completed challenge and resets the user's state. All activity queries now filter by a  timestamp.
+  - **Frontend**: Added a prominent Start Your Next Challenge call-to-action on the dashboard that appears upon completion and directs the user back through the onboarding flow.
+- **Admin Panel & Onboarding Fixes**:
+  - Removed the Sponsor Inquiries functionality from the admin panel and frontend.
+  - Improved the Add New Sponsor form to prevent errors by showing level capacity.
+  - Fixed bugs related to file uploads for sponsor logos.
+  - Reworked the Invited to Join a Team signup page to match the primary onboarding flow, including optional photo upload and informational achievement levels.
+- **Code Health & Testing**:
+  - Removed all legacy Stripe integration code and replaced it with a clean GiveButter placeholder service.
+  - Successfully ran the  multiple times (, , ), achieving 100% pass rates on all backend and frontend tests after major changes.
 
 **Earlier issues found/mentioned but not fixed**
-All outstanding issues are documented in .
+- All previously identified issues have been addressed. The current pending tasks are from the most recent user messages.
 
 **Known issue recurrence from previous fork**
 - N/A
@@ -76,79 +101,84 @@ All outstanding issues are documented in .
 **Key Technical Concepts**
 - **Frontend**: React, React Router, Tailwind CSS, shadcn/ui, Axios.
 - **Backend**: FastAPI, MongoDB (pymongo with aggregation pipelines), JWT for authentication, File uploads.
-- **Architecture**: Monorepo with a  directory in the backend for modular business logic (payments, fitness integration).
+- **Architecture**: Monorepo with a  directory in the backend for modular business logic.
 
 **key DB schema**
-- **users**: Walker/Admin/Supporter data, auth details, progress, team linkage, Google Fit tokens.
-- **challenges**: Virtual routes with name, distance, milestones, and an  flag.
-- **teams**: Team data, members, leader, invite codes.
-- **pledges**: Link supporters to walkers with pledge amounts/types.
-- **sponsorship_levels**: Admin-defined tiers (e.g., Gold, Silver) with constraints.
-- **corporate_sponsors**: Sponsors with logos, websites, linked to a level.
-- **sponsor_inquiries**: Leads from the Become a Sponsor form.
+- **users**: Contains user data, auth details, and now includes  and an array  to track multiple runs.
+- **challenges**: Virtual routes with distance and milestones. Will require an  field for the new re-ordering feature.
+- **pledges**: Links supporters to walkers with pledge amounts/types.
+- **activities**: Stores user-logged activities (e.g., walks). Now filtered by .
+- **corporate_sponsors**: Sponsors with logos, linked to sponsorship levels.
 
 **changes in tech stack**
-- The user has requested to use **GiveButter** for payments via a simple embed, replacing the planned **Stripe** integration. All Stripe-related code should be removed.
+- **Stripe** has been fully removed.
+- **GiveButter** is the new payment provider (currently a placeholder).
+- **Mailchimp** is the requested email provider (replaces SendGrid suggestion).
 
 **All files of reference**
-- **/app/PUNCHLIST.md**: The primary source of truth for all new work.
-- **/app/FREELANCER_HANDOFF.md**: To be updated after punch list is complete.
-- **/app/QUICK_START.md**: To be updated after punch list is complete.
-- : Needs a major redesign of the pledge form.
-- : Needs a complete logic overhaul.
-- : Needs several enhancements as per the punch list.
-- : Will require modifications to support punch list items (e.g., user deletion).
+- : Will be modified for challenge re-ordering.
+- : Will be modified for the challenge re-order endpoint and Mailchimp integration.
+- : Contains the overall product goals.
+- : Contains the Start New Challenge feature.
+- : Contains the fixes for challenge scrolling and sponsor spacing.
 
 **Areas that need refactoring**:
-- The  module should be cleared of Stripe code and adapted for GiveButter.
--  and  require significant refactoring to meet the new UI/UX requirements from the punch list.
+- None. The codebase is in a stable state after extensive, targeted fixes.
 
 **key api endpoints**
-- All existing API endpoints remain relevant.
-- A new endpoint may be required for an Admin to delete a user account.
-- Stripe-related endpoints should be removed.
+- : (New) Archives a completed challenge and resets the user to begin a new one.
+- : Updated to return  and filter activities correctly.
+- : Logic fixed to calculate pledge totals based on full route distance.
+- : Logic fixed to include calculated pledge amounts.
+- : (New) Allows users to upload a profile picture.
 
 **Critical Info for New Agent**
-- **The user's punch list, saved in , is your ONLY priority.** All other plans are superseded.
-- The user has expressed frustration. It's crucial to make steady, visible progress on the punch list items. Start with the UI/UX fixes which have the most impact.
-- **The payment provider is now GiveButter (simple embed), not Stripe.** Remove all preparatory code for Stripe.
-- After completing the punch list, you must update the  and  files to remove budget info, revise time estimates, and reflect all the new changes.
+- **Priority**: The user's most recent requests are the highest priority. Start with **Challenge Re-ordering (P0)**, then move to **Mailchimp Integration (P1)**.
+- **User Communication**: The user is highly engaged and provides clear, iterative feedback. Address their latest points directly and confirm fixes with screenshots. They are reviewing the app on the preview URL, not the production one.
+- **Integration**: For the Mailchimp task, you MUST use the  tool to ensure correct implementation.
+- **New Challenge Flow**: This feature is fully implemented but was difficult for the user to test visually. Be aware that it works by archiving the old challenge, setting the user's  status to , and directing them to the  page to start the new flow.
 
 **documents and test reports created in this job**
 - 
 - 
 - 
-- Test reports from  to  in .
+-  (updated)
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User #413 & #416**: Provided a comprehensive punch list of required changes and fixes, which is now the main task.
-2.  **User #419 & #422**: Expressed significant frustration with the agent's perceived lack of progress and being stuck.
-3.  **User #408**: Asked for a recommendation between GiveButter, PayPal, and Stripe. The user later chose GiveButter.
-4.  **User #363**: Asked the agent to run a deployment health check.
-5.  **User #352**: Asked for a full project summary, including how to go live, prebuilt logins, a page list, mobile app options, and a handoff guide for a freelancer.
-6.  **User #356**: Confirmed they wanted the freelancer handoff documents created.
-7.  **User #307**: Chose Google Fit for the step counter integration.
+10. **User**: Requests re-ordering capability for Challenges in the Admin panel. (PENDING)
+9.  **User**: Confirms the fix for fundraiser name display (Full Name Nickname) is correct.
+8.  **User**: Requests that the fundraiser page show both the walker's full name and their nickname. (COMPLETED)
+7.  **User**: Confirms the Start New Challenge plan is clear and can be implemented.
+6.  **User**: Asks for a new feature: a flow for walkers to start a new challenge after finishing one. (COMPLETED)
+5.  **User**: Confirms the sponsor section spacing is now correct.
+4.  **User**: Provides clearer instructions on the sponsor section spacing issue with a screenshot. (COMPLETED)
+3.  **User**: Reports that the horizontal scroll for challenges is fixed but needs visible arrow buttons. (COMPLETED)
+2.  **User**: Asks for Mailchimp instead of SendGrid and states they will do a final check of the app.
+1.  **User**: Reports the preview is unavailable and asks for it to be restarted. (COMPLETED)
 
 **Project Health Check:**
-- **Broken**: The  logic is incorrect, the  pledge form needs a complete redesign, the team search functionality is flawed, and the Leaderboard is not interactive.
-- **Mocked**: Payment processing (needs GiveButter embed), email notifications, and route map visualizations are not implemented.
+- **Broken**: None
+- **Mocked**:
+  - GiveButter payment processing (UI placeholder only).
+  - Mailchimp email notifications (not yet implemented).
+  - Google Fit integration (backend service exists but is not fully wired).
 
 **3rd Party Integrations**
-- **Google Fit**: Backend OAuth flow is implemented but requires admin configuration of client ID/secret to be enabled.
-- **GiveButter**: Requested as the new payment provider (simple embed). This needs to be implemented.
-- **Stripe**: To be removed.
+- **Google Fit**: Backend service exists for OAuth flow but is not actively used.
+- **GiveButter**: Requested as the payment provider (simple embed). Code has a placeholder service.
+- **Mailchimp Transactional Email**: Requested for notifications. **This is a pending task.**
 
 **Testing status**
-- **Testing agent used after significant changes**: YES
+- **Testing agent used after significant changes**: YES. The agent ran  three times in this session with 100% success.
 - **Troubleshoot agent used after agent stuck in loop**: NO
-- **Test files created**: None. All testing has been performed by subagents.
-- **Known regressions**: The  functionality appears to be a regression or was never correctly implemented to user's expectation.
+- **Test files created**: None.
+- **Known regressions**: None.
 
 **Credentials to test flow:**
 - **Admin**:  / 
-- **Walker 1**:  / 
-- **Walker 2**:  / 
+- **Walker (John)**:  / 
+- **Walker (Mary)**:  / 
 - **Supporter**:  / 
 
 **What agent forgot to execute**
-The agent was interrupted while starting to work on the user's extensive punch list. The primary un-executed task is to complete all items documented in .</analysis>
+- Nothing. The agent successfully completed a very large and detailed set of user requests and is awaiting the next set of instructions, having already started investigation on the most recent one.</analysis>
