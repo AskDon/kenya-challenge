@@ -231,7 +231,9 @@ export default function FundraisingPage() {
             <span className="text-2xl font-bold text-white">{walker.display_name?.[0] || walker.full_name?.[0]}</span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-1" data-testid="walker-name-header">
-            {walker.display_name || walker.full_name}
+            {walker.display_name && walker.display_name !== walker.full_name
+              ? <>{walker.full_name} <span className="text-orange-300">"{walker.display_name}"</span></>
+              : walker.full_name}
           </h1>
           <p className="text-stone-400 text-sm">is walking for Kenya Education Fund</p>
           {team && (
