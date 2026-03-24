@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import api from '../lib/api';
-import { ArrowRight, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap, Building2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const HERO_BG = 'https://images.unsplash.com/photo-1738507967372-67c692309a07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
 const STUDENTS_IMG = 'https://images.unsplash.com/photo-1729691032175-d6edd1581a31?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwc3R1ZGVudHMlMjBzbWlsaW5nJTIwc2Nob29sJTIwdW5pZm9ybSUyMGtlbnlhfGVufDB8fHx8MTc3MDc0NzM1MHww&ixlib=rb-4.1.0&q=85';
@@ -14,6 +14,14 @@ export default function LandingPage() {
   const { user } = useAuth();
   const [challenges, setChallenges] = useState([]);
   const [sponsors, setSponsors] = useState([]);
+  const scrollRef = useRef(null);
+
+  const scrollChallenges = (direction) => {
+    if (scrollRef.current) {
+      const scrollAmount = 360;
+      scrollRef.current.scrollBy({ left: direction === 'right' ? scrollAmount : -scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   useEffect(() => {
     api.get('/challenges').then(r => setChallenges(r.data)).catch(() => {});
@@ -115,25 +123,48 @@ export default function LandingPage() {
             <h2 className="text-2xl md:text-3xl font-bold text-stone-900 text-center mb-12">
               Choose Your Challenge
             </h2>
-            <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-              {challenges.map((ch) => (
-                <Card key={ch.id} className="bg-stone-50 rounded-2xl border border-stone-100 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 min-w-[300px] md:min-w-[340px] snap-start flex-shrink-0" style={{ maxWidth: challenges.length <= 3 ? 'none' : '340px' }}>
-                  <div className="h-3 bg-gradient-to-r from-orange-500 to-emerald-600" />
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Mountain className="w-5 h-5 text-orange-600" />
-                      <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">{ch.total_distance_km} km</span>
-                    </div>
-                    <h3 className="text-lg font-bold text-stone-900 mb-2">{ch.name}</h3>
-                    <p className="text-sm text-stone-500 leading-relaxed mb-4 line-clamp-3">{ch.description}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {ch.milestones?.slice(0, 3).map((m, i) => (
-                        <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{m.title}</span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="relative">
+              {/* Left arrow */}
+              <button
+                onClick={() => scrollChallenges('left')}
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:text-orange-600 transition-colors hidden md:flex"
+                data-testid="challenges-scroll-left"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+                {challenges.map((ch) => (
+                  <Card key={ch.id} className="bg-stone-50 rounded-2xl border border-stone-100 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 min-w-[280px] md:min-w-[320px] snap-start flex-shrink-0" style={{ maxWidth: '340px' }}>
+                    <div className="h-3 bg-gradient-to-r from-orange-500 to-emerald-600" />
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Mountain className="w-5 h-5 text-orange-600" />
+                        <span className="text-xs font-medium text-stone-400 uppercase tracking-wider">{ch.total_distance_km} km</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-stone-900 mb-2">{ch.name}</h3>
+                      <p className="text-sm text-stone-500 leading-relaxed mb-4 line-clamp-3">{ch.description}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {ch.milestones?.slice(0, 3).map((m, i) => (
+                          <span key={i} className="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full">{m.title}</span>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Right arrow */}
+              <button
+                onClick={() => scrollChallenges('right')}
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:text-orange-600 transition-colors hidden md:flex"
+                data-testid="challenges-scroll-right"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              {/* Mobile scroll hint */}
+              <p className="text-center text-xs text-stone-400 mt-2 md:hidden">Swipe to see more routes</p>
             </div>
             {/* H2: Choose Your Route CTA */}
             <div className="text-center mt-10">
