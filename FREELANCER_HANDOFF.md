@@ -4,7 +4,8 @@
 
 **The Kenya Challenge** is a virtual walking challenge app for the Kenya Education Fund (KEF). Users walk real distances that are tracked virtually along iconic Kenyan routes, while raising funds through peer-to-peer fundraising.
 
-**Live Preview:** https://challenge-admin-1.preview.emergentagent.com
+**Production URL:** https://walking-kef.preview.emergentagent.com
+**Preview URL:** https://challenge-admin-1.preview.emergentagent.com
 
 ---
 
@@ -12,11 +13,12 @@
 
 | Layer | Technology |
 |-------|------------|
-| Frontend | React 19, Tailwind CSS, shadcn/ui, React Router |
-| Backend | FastAPI (Python), Motor (async MongoDB) |
-| Database | MongoDB |
-| Authentication | JWT (email/password) |
+| Frontend | React 19, Tailwind CSS, shadcn/ui, React Router, Axios |
+| Backend | FastAPI (Python), Motor (async MongoDB driver) |
+| Database | MongoDB (Atlas in production) |
+| Authentication | JWT (email/password, bcrypt hashing) |
 | File Storage | Local uploads (`/app/backend/uploads/`) |
+| Build Tool | Craco (Create React App Configuration Override) |
 
 ---
 
@@ -25,46 +27,58 @@
 ```
 /app/
 ├── backend/
-│   ├── server.py              # Main API server (all endpoints)
+│   ├── server.py              # Main API server (~2200 lines, all 80 endpoints)
 │   ├── requirements.txt       # Python dependencies
-│   ├── .env                   # Environment variables
-│   ├── uploads/               # Uploaded files (logos, images)
-│   └── services/
-│       ├── __init__.py
-│       ├── payment_service.py    # Stripe-ready payment module
-│       └── google_fit_service.py # Google Fit integration
+│   ├── .env                   # Backend environment variables
+│   ├── uploads/               # Uploaded files (logos, route maps, profile pics)
+│   │   ├── route_maps/
+│   │   ├── route_map_markers/
+│   │   ├── milestone_images/
+│   │   ├── sponsor_logos/
+│   │   └── profile_pictures/
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── payment_service.py    # GiveButter placeholder
+│   │   └── google_fit_service.py # Google Fit OAuth integration
+│   └── tests/
+│       └── test_challenge_reorder.py
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── App.js             # Main routing
+│   │   ├── App.js             # Main routing (all routes defined here)
 │   │   ├── context/
-│   │   │   └── AuthContext.js # Authentication state
+│   │   │   └── AuthContext.js  # Auth state, login/logout, fetchUser
 │   │   ├── lib/
-│   │   │   └── api.js         # Axios API client
+│   │   │   └── api.js         # Axios instance with JWT interceptor
 │   │   ├── components/
-│   │   │   ├── ui/            # shadcn/ui components
-│   │   │   ├── Navbar.js
-│   │   │   └── ShareButtons.js
+│   │   │   ├── ui/            # shadcn/ui components (button, card, dialog, etc.)
+│   │   │   ├── Navbar.js      # Top navigation bar
+│   │   │   └── ShareButtons.js # Social sharing (Facebook, Twitter, WhatsApp, copy link)
 │   │   └── pages/
-│   │       ├── LandingPage.js
-│   │       ├── LoginPage.js
-│   │       ├── SignupPage.js
-│   │       ├── OnboardingPage.js
-│   │       ├── DashboardPage.js
-│   │       ├── ActivityPage.js
-│   │       ├── TeamPage.js
-│   │       ├── TeammateSignupPage.js
-│   │       ├── SupportersPage.js
-│   │       ├── SupporterDashboard.js
-│   │       ├── FundraisingPage.js
-│   │       ├── LeaderboardPage.js
-│   │       ├── ProfilePage.js
-│   │       └── AdminPage.js
+│   │       ├── LandingPage.js       # Public homepage
+│   │       ├── LoginPage.js         # Login form
+│   │       ├── SignupPage.js        # Walker registration
+│   │       ├── OnboardingPage.js    # Multi-step: challenge > type > team > payment
+│   │       ├── DashboardPage.js     # Walker dashboard with progress
+│   │       ├── ActivityPage.js      # Log walks, view history, Google Fit
+│   │       ├── TeamPage.js          # Team management and invites
+│   │       ├── TeammatSignupPage.js # Invited teammate signup flow
+│   │       ├── SupportersPage.js    # Walker's supporter list + invite
+│   │       ├── SupporterDashboard.js # Supporter's pledge overview
+│   │       ├── FundraisingPage.js   # Public fundraising page per walker
+│   │       ├── LeaderboardPage.js   # Distance + fundraising leaderboards
+│   │       ├── ProfilePage.js       # Edit profile + photo
+│   │       ├── AdminPage.js         # Full admin console (7 tabs)
+│   │       └── ChallengesPage.js    # Challenge detail page
 │   ├── package.json
+│   ├── tailwind.config.js
+│   ├── craco.config.js
 │   └── .env
 │
-└── memory/
-    └── PRD.md                 # Product requirements document
+├── memory/
+│   └── PRD.md                 # Product requirements document
+├── PUNCHLIST.md               # Original feature request list
+└── QUICK_START.md             # Quick start guide
 ```
 
 ---
@@ -73,9 +87,9 @@
 
 | Role | Email | Password | Notes |
 |------|-------|----------|-------|
-| Admin | sabrina@kenyaeducationfund.org | admin123 | Full admin access |
-| Walker 1 | john@example.com | walker123 | Team leader of "KEF Trailblazers" |
-| Walker 2 | mary@example.com | walker123 | Team member |
+| Admin | sabrina@kenyaeducationfund.org | admin123 | Full admin access, KEF staff |
+| Walker 1 | john@example.com | walker123 | "JohnnySteps", team leader of "KEF Trailblazers" |
+| Walker 2 | mary@example.com | walker123 | "MaryMoves", team member |
 | Supporter | supporter1@test.com | test1234 | Has pledges to walkers |
 
 ---
@@ -83,286 +97,252 @@
 ## User Roles & Flows
 
 ### 1. Walker (Primary User)
-- Signs up → Onboarding (select challenge, walker type, team) → Pay registration fee
-- Logs daily activity (steps/km) manually or via Google Fit
-- Shares fundraising page to collect pledges
-- Views progress on dashboard and leaderboard
+1. Signs up at `/signup` (email, password, full name, nickname)
+2. Onboarding at `/onboarding`:
+   - Step 1: Select a challenge (virtual route)
+   - Step 2: Select walker type (Basic $25 / Builder $97 / Leader $250)
+   - Step 3: Create or join a team (optional)
+   - Step 4: Payment via GiveButter (placeholder), invite supporters, share fundraising link
+3. Logs daily activity manually (steps or km) at `/activity`
+4. Shares public fundraising page `/fundraise/:userId` to collect pledges
+5. Views progress, milestones, team stats on dashboard
+6. Can start a new challenge after completing one
 
 ### 2. Supporter
-- Visits walker's fundraising page → Makes pledge (flat amount)
-- Creates account during pledge process
-- Views their pledges in Supporter Dashboard
+1. Visits a walker's fundraising page at `/fundraise/:userId`
+2. Makes a pledge: flat total amount AND/OR per-km amount (both combinable)
+3. Creates account during pledge process (auto-redirected to supporter dashboard)
+4. Views all their pledges at `/supporter-dashboard`
 
-### 3. Team Leader
-- Creates team → Invites teammates via link
-- Can remove team members
-- Views team stats and progress
-
-### 4. Admin (KEF Staff)
-- Manages Challenges (CRUD, active/inactive toggle)
-- Manages Walker Types (Basic $25, Builder $97, Leader $250)
-- Manages Achievement Levels (fundraising milestones)
-- Manages Corporate Sponsors (levels, logos)
-- Reviews Sponsor Inquiries from "Become a Sponsor" form
-- Views platform statistics
+### 3. Admin (KEF Staff)
+Admin console at `/admin` with 7 tabs:
+- **Stats**: Total walkers, supporters, pledges, revenue + per-challenge breakdown table
+- **Challenges**: CRUD, active/inactive toggle, reorder (up/down arrows), route map upload, milestone photo upload
+- **Walker Types**: CRUD with display_order
+- **Achievements**: CRUD with display_order (fundraising milestone levels)
+- **Users**: View all users, delete users
+- **Corporate**: Manage sponsorship levels (Title/Gold/Silver) and corporate sponsors with logo upload
+- **Config**: App-wide settings
 
 ---
 
-## API Endpoints Reference
+## API Endpoints Reference (80 total)
 
 ### Authentication
 ```
-POST /api/auth/signup          # Create new user
-POST /api/auth/login           # Login, returns JWT token
-GET  /api/auth/me              # Get current user
+POST /api/auth/signup              # Create new user (walker or supporter)
+POST /api/auth/login               # Login, returns { token, user }
+GET  /api/auth/me                  # Get current user from JWT
+PUT  /api/auth/profile             # Update profile fields
+POST /api/auth/profile-picture     # Upload profile picture (multipart)
 ```
 
 ### Challenges
 ```
-GET  /api/challenges           # List active challenges
-GET  /api/challenges/all       # List all (admin)
-GET  /api/challenges/:id       # Get single challenge
-POST /api/challenges           # Create (admin)
-PUT  /api/challenges/:id       # Update (admin)
-DELETE /api/challenges/:id     # Delete (admin)
-POST /api/challenges/:id/route-map         # Upload route map
-POST /api/challenges/:id/route-map-markers # Upload markers map
+GET  /api/challenges               # List active challenges (sorted by display_order)
+GET  /api/challenges/all           # List ALL challenges (admin only)
+GET  /api/challenges/:id           # Get single challenge
+POST /api/challenges               # Create challenge (admin)
+PUT  /api/challenges/:id           # Update challenge (admin)
+DELETE /api/challenges/:id         # Delete challenge (admin)
+POST /api/challenges/reorder       # Reorder challenges { ordered_ids: [] } (admin)
+POST /api/challenges/:id/route-map          # Upload route map image (admin)
+POST /api/challenges/:id/route-map-markers  # Upload markers overlay image (admin)
+POST /api/challenges/:id/milestones/:idx/image  # Upload milestone photo (admin)
+```
+
+### Walker Types & Achievement Levels
+```
+GET  /api/walker-types             # List walker types (sorted by display_order)
+POST /api/walker-types             # Create (admin)
+PUT  /api/walker-types/:id         # Update (admin)
+DELETE /api/walker-types/:id       # Delete (admin)
+
+GET  /api/achievement-levels       # List achievement levels (sorted by display_order)
+POST /api/achievement-levels       # Create (admin)
+PUT  /api/achievement-levels/:id   # Update (admin)
+DELETE /api/achievement-levels/:id # Delete (admin)
+```
+
+### User Actions
+```
+POST /api/users/select-challenge   # Select challenge + walker type during onboarding
+POST /api/users/mark-paid          # Mark user as paid (after payment)
+GET  /api/users/progress           # Get walker's route progress + completed challenges
+POST /api/users/start-new-challenge # Archive current challenge, start fresh
 ```
 
 ### Activities
 ```
-GET  /api/activities           # User's activities
-POST /api/activities           # Log activity
-DELETE /api/activities/:id     # Delete activity
-GET  /api/users/progress       # Get user's progress
+GET  /api/activities               # User's activity history (filtered by current challenge)
+POST /api/activities               # Log activity { type, value, date, notes }
+DELETE /api/activities/:id         # Delete an activity
 ```
 
 ### Teams
 ```
-GET  /api/teams/my             # Get user's team
-POST /api/teams                # Create team
-GET  /api/teams/invite/:code   # Get team by invite code
-POST /api/teams/join/:code     # Join team
-POST /api/teams/leave          # Leave team
-DELETE /api/teams/members/:id  # Remove member (leader only)
+POST /api/teams                    # Create team { name, challenge_id }
+PUT  /api/teams/my                 # Update team name/description
+GET  /api/teams/search             # Search teams by query + challenge
+GET  /api/teams/my                 # Get user's team with members + stats
+GET  /api/teams/invite/:code       # Get team info by invite code
+POST /api/teams/join/:code         # Join team by invite code
+POST /api/teams/leave              # Leave current team
+DELETE /api/teams/members/:id      # Remove member (leader only)
 ```
 
-### Pledges & Supporters
+### Pledges & Fundraising
 ```
-POST /api/pledges                      # Create pledge
-POST /api/supporters/signup            # Signup as supporter with pledge
-GET  /api/supporters/dashboard         # Supporter's pledges
-GET  /api/fundraising/:userId          # Public fundraising page data
+POST /api/pledges/:walkerId        # Create pledge to a walker
+PUT  /api/pledges/:pledgeId/link-supporter  # Link pledge to supporter account
+GET  /api/pledges/:walkerId        # Get all pledges for a walker
+GET  /api/fundraising/:walkerId    # Public fundraising page data (walker + pledges + challenge)
+```
+
+### Supporters
+```
+POST /api/supporters/signup         # Signup as supporter with initial pledge
+POST /api/supporters/login-and-pledge # Login existing supporter and create pledge
+GET  /api/supporters/dashboard      # Supporter's pledges with calculated amounts
+POST /api/supporter-invites         # Walker sends supporter invites (name + email)
+GET  /api/supporter-invites         # Get walker's sent invites
+```
+
+### Sponsors (walker's personal sponsors/donations)
+```
+POST /api/sponsors/:walkerId       # Add personal sponsor
+GET  /api/sponsors/:walkerId       # Get walker's personal sponsors
 ```
 
 ### Corporate Sponsors
 ```
-GET  /api/sponsorship-levels           # List levels
-POST /api/sponsorship-levels           # Create (admin)
-PUT  /api/sponsorship-levels/:id       # Update (admin)
-DELETE /api/sponsorship-levels/:id     # Delete (admin)
-GET  /api/corporate-sponsors           # List sponsors
-GET  /api/corporate-sponsors/public    # Sponsors grouped by level
-POST /api/corporate-sponsors           # Create (admin)
-PUT  /api/corporate-sponsors/:id       # Update (admin)
-DELETE /api/corporate-sponsors/:id     # Delete (admin)
-POST /api/corporate-sponsors/:id/logo  # Upload logo
-DELETE /api/corporate-sponsors/:id/logo # Remove logo
+GET  /api/sponsorship-levels                # List levels (Title/Gold/Silver)
+POST /api/sponsorship-levels                # Create level (admin)
+PUT  /api/sponsorship-levels/:id            # Update level (admin)
+DELETE /api/sponsorship-levels/:id          # Delete level (admin)
+GET  /api/corporate-sponsors                # List all sponsors
+GET  /api/corporate-sponsors/public         # Sponsors grouped by level (for landing page)
+POST /api/corporate-sponsors                # Create sponsor (admin)
+PUT  /api/corporate-sponsors/:id            # Update sponsor (admin)
+DELETE /api/corporate-sponsors/:id          # Delete sponsor (admin)
+POST /api/corporate-sponsors/:id/logo       # Upload logo (admin)
+DELETE /api/corporate-sponsors/:id/logo     # Remove logo (admin)
 ```
 
-### Sponsor Inquiries
+### Leaderboards
 ```
-POST /api/sponsor-inquiries            # Submit inquiry (public)
-GET  /api/sponsor-inquiries            # List all (admin)
-PUT  /api/sponsor-inquiries/:id/status # Update status (admin)
-DELETE /api/sponsor-inquiries/:id      # Delete (admin)
+GET /api/leaderboards/distance        # Individual distance leaderboard
+GET /api/leaderboards/raised          # Individual fundraising leaderboard
+GET /api/leaderboards/teams/distance  # Team distance leaderboard
+GET /api/leaderboards/teams/raised    # Team fundraising leaderboard
 ```
 
 ### Google Fit
 ```
-GET  /api/fitness/status       # Check if configured
-GET  /api/fitness/connect      # Start OAuth flow
-GET  /api/fitness/callback     # OAuth callback
-GET  /api/fitness/steps        # Get step data
-POST /api/fitness/sync         # Sync today's steps
-DELETE /api/fitness/disconnect # Disconnect
+GET  /api/fitness/status       # Check if Google Fit is configured
+GET  /api/fitness/connect      # Start OAuth flow (redirect URL)
+GET  /api/fitness/callback     # OAuth callback handler
+GET  /api/fitness/steps        # Get step data from Google Fit
+POST /api/fitness/sync         # Sync today's steps as activity
+DELETE /api/fitness/disconnect # Disconnect Google Fit
 ```
 
 ### Admin
 ```
-GET  /api/admin/stats          # Platform statistics
-GET  /api/admin/users          # List all users
-GET  /api/admin/config         # Get app config
-PUT  /api/admin/config         # Update app config
+GET  /api/admin/stats              # Platform-wide statistics
+GET  /api/admin/stats/by-challenge # Stats broken down per challenge
+GET  /api/admin/users              # List all users
+DELETE /api/admin/users/:id        # Delete user
+GET  /api/admin/config             # Get app config
+PUT  /api/admin/config             # Update app config
 ```
 
 ---
 
 ## Database Collections
 
-| Collection | Description |
-|------------|-------------|
-| users | All users (walkers, supporters, admins) |
-| challenges | Walking routes with milestones |
-| activities | Activity logs (steps, km, date) |
-| teams | Team information |
-| walker_types | Registration tiers (Basic, Builder, Leader) |
-| achievement_levels | Fundraising milestones |
-| pledges | Supporter pledges |
-| sponsors | Legacy donations (deprecated) |
-| sponsorship_levels | Corporate sponsor tiers |
-| corporate_sponsors | Corporate sponsor info |
-| sponsor_inquiries | "Become a Sponsor" form submissions |
-| config | App configuration |
+| Collection | Key Fields | Description |
+|------------|-----------|-------------|
+| `users` | id, email, password_hash, role, full_name, display_name, challenge_id, walker_type_id, team_id, paid, challenge_started_at, completed_challenges[] | All users |
+| `challenges` | id, name, description, total_distance_km, milestones[], display_order, is_active, route_map_url | Virtual routes |
+| `activities` | id, user_id, type (steps/km), value, date, challenge_started_at | Activity logs |
+| `teams` | id, name, challenge_id, leader_id, members[], invite_code | Teams |
+| `pledges` | id, walker_id, supporter_id, supporter_name, pledge_type (total/per_km), amount, created_at | Supporter pledges |
+| `walker_types` | id, name, cost_usd, display_order | Registration tiers |
+| `achievement_levels` | id, total_amount_usd, achievement, swag, display_order | Fundraising milestones |
+| `corporate_sponsors` | id, name, level_id, logo_url, website_url | Corporate sponsors |
+| `sponsorship_levels` | id, name, max_sponsors, display_order | Sponsor tiers (Title/Gold/Silver) |
+| `supporter_invites` | id, walker_id, invites[] | Sent invitations |
+| `app_config` | key, value | App settings |
+| `donations` | id, walker_id, amount, type | Legacy donations |
+
+### Important Data Model Notes
+- **Pledge amounts are calculated at FULL route distance**, not partial progress. If a supporter pledges $2/km on a 200km route, the total shown is $400 regardless of current walker progress.
+- **Activities filter by `challenge_started_at`** so when a walker starts a new challenge, only new activities count.
+- **`completed_challenges[]`** on users stores archived challenge data when a walker finishes and starts a new one.
 
 ---
 
-## Priority Tasks for Freelancer
+## What's WORKING (Fully Implemented)
 
-### P0 - Critical (Do First)
+Everything listed below is built, tested, and functional:
 
-#### 1. Stripe Payment Integration
-**Effort:** 8-16 hours | **Budget:** $500-800
+- Multi-role authentication (Admin, Walker, Supporter) with JWT
+- Full admin console with 7 tabs (Stats, Challenges, Walker Types, Achievements, Users, Corporate, Config)
+- Admin can reorder Challenges, Walker Types, and Achievement Levels
+- Admin can upload route maps and milestone photos per challenge
+- Walker multi-step onboarding (challenge selection, walker type, team, payment/invite)
+- Manual activity logging (steps or km)
+- Route progress visualization with milestone markers on dashboard
+- Team creation, join by invite code, leader can remove members
+- Public fundraising pages per walker with two-option pledge form (Total + Per KM, combinable)
+- Supporter signup/login from fundraising page with auto-redirect to dashboard
+- Leaderboards: individual distance, individual raised, team distance, team raised
+- Clickable walker names on leaderboard link to fundraising pages
+- Walker profile picture upload (dashboard + onboarding)
+- Social sharing buttons (Facebook, Twitter, WhatsApp, copy link)
+- Corporate sponsors on landing page grouped by level with proper spacing
+- "Become a Sponsor" section with email contact link
+- Horizontal scrolling challenge cards on homepage
+- "Start New Challenge" flow for walkers who complete a route
+- Walker displays as "Full Name "Nickname"" on fundraising pages
 
-The payment service module is ready at `/app/backend/services/payment_service.py`.
+---
 
-**Steps:**
-1. Install Stripe: `pip install stripe`
-2. Add to `.env`:
-   ```
-   STRIPE_API_KEY=sk_live_xxx
-   STRIPE_WEBHOOK_SECRET=whsec_xxx
-   ```
-3. Implement methods in `PaymentService`:
-   - `create_stripe_payment_intent()` - Create payment intent
-   - `confirm_stripe_payment()` - Verify payment
-   - `process_stripe_webhook()` - Handle webhooks
-   - `create_stripe_refund()` - Process refunds
-4. Update frontend onboarding to use Stripe Checkout or Elements
-5. Add webhook endpoint: `POST /api/webhooks/stripe`
+## What NEEDS to be Implemented
 
-**Reference:** The `PaymentService` class has detailed comments and placeholder implementations.
+### 1. GiveButter Payment Integration (PLACEHOLDER)
+**Status:** UI placeholder exists. No real payment processing.
+**What's needed:** Replace the placeholder with GiveButter's actual embed/widget code.
+**Where:** 
+- Frontend: `OnboardingPage.js` Step 4 shows a placeholder
+- Frontend: `FundraisingPage.js` has a GiveButter placeholder section
+- Backend: `services/payment_service.py` has a placeholder class
+**Action:** Get the GiveButter embed code from KEF and drop it in.
 
-#### 2. Email Notifications
-**Effort:** 4-8 hours | **Budget:** $300-500
-
-**Recommended:** SendGrid or Resend
-
+### 2. Email Notifications (NOT IMPLEMENTED)
+**Status:** No email sending exists anywhere.
+**Requested provider:** Mailchimp (transactional/Mandrill)
 **Emails needed:**
-- Welcome email (after signup)
-- Pledge notification (to walker when supporter pledges)
-- Team invite email
-- Password reset (if implementing)
+- Notification to walker when they receive a new pledge
+- Welcome email after signup (nice to have)
+- Team invite email (nice to have)
+**Where to add:** Create `backend/services/email_service.py`, call it from the pledge creation endpoint in `server.py` (line ~811, `POST /api/pledges/:walkerId`).
 
-**Steps:**
-1. Install: `pip install sendgrid` or `pip install resend`
-2. Add API key to `.env`
-3. Create email templates (HTML)
-4. Add email sending to relevant endpoints
-
----
-
-### P1 - Important
-
-#### 3. Google Fit Configuration
-**Effort:** 2-4 hours | **Budget:** $100-200
-
-The code is complete, just needs credentials.
-
+### 3. Google Fit Auto-Sync (BACKEND READY, NEEDS CREDENTIALS)
+**Status:** Full OAuth flow is coded in `services/google_fit_service.py`. Just needs Google API credentials.
 **Steps:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create project "Kenya Challenge"
-3. Enable "Fitness API"
-4. Create OAuth 2.0 credentials (Web application)
-5. Add authorized redirect: `https://yourdomain.com/api/fitness/callback`
-6. Add to backend `.env`:
+2. Create project, enable "Fitness API"
+3. Create OAuth 2.0 credentials (Web application)
+4. Set authorized redirect: `https://yourdomain.com/api/fitness/callback`
+5. Add to `backend/.env`:
    ```
-   GOOGLE_FIT_CLIENT_ID=xxx
-   GOOGLE_FIT_CLIENT_SECRET=xxx
+   GOOGLE_FIT_CLIENT_ID=your_client_id
+   GOOGLE_FIT_CLIENT_SECRET=your_client_secret
    GOOGLE_FIT_REDIRECT_URI=https://yourdomain.com/api/fitness/callback
    FRONTEND_URL=https://yourdomain.com
    ```
-
-#### 4. PWA Setup (Mobile App Experience)
-**Effort:** 2-4 hours | **Budget:** $200-400
-
-**Steps:**
-1. Create `public/manifest.json`:
-   ```json
-   {
-     "name": "The Kenya Challenge",
-     "short_name": "Kenya Challenge",
-     "start_url": "/",
-     "display": "standalone",
-     "background_color": "#ffffff",
-     "theme_color": "#ea580c",
-     "icons": [
-       {"src": "/icon-192.png", "sizes": "192x192", "type": "image/png"},
-       {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png"}
-     ]
-   }
-   ```
-2. Create service worker for offline caching
-3. Add meta tags to `index.html`
-4. Create app icons (192x192, 512x512)
-
----
-
-### P2 - Nice to Have
-
-#### 5. Route Map Visual Progress
-**Effort:** 4-8 hours | **Budget:** $300-500
-
-Show walker's position on the challenge map image.
-
-**Approach:**
-- Admin uploads route map with distance markers
-- Calculate walker's position based on total_km
-- Overlay a pin/marker on the image at the correct position
-
-#### 6. Profile Picture Upload
-**Effort:** 2-4 hours | **Budget:** $150-300
-
-Similar to sponsor logo upload. Add endpoint and UI.
-
-#### 7. Achievement Certificates
-**Effort:** 4-8 hours | **Budget:** $300-500
-
-Generate shareable certificate images when walker completes challenge or reaches achievement level.
-
-**Options:**
-- Server-side: Use Pillow or html2image
-- Client-side: Use html2canvas
-
----
-
-### Security Hardening Checklist
-
-| Task | Priority | Notes |
-|------|----------|-------|
-| ✅ JWT authentication | Done | Already implemented |
-| ✅ Password hashing | Done | Using passlib/bcrypt |
-| ⬜ Rate limiting | P1 | Add to `/api/auth/*` endpoints |
-| ⬜ Input validation | P1 | Review all endpoints for XSS, injection |
-| ⬜ HTTPS enforcement | P1 | Ensure production uses HTTPS only |
-| ⬜ Password requirements | P2 | Currently 6 chars min, consider 8+ |
-| ⬜ Session timeout | P2 | JWT expires in 7 days, consider shorter |
-| ⬜ Admin audit log | P3 | Log admin actions (create, delete, etc.) |
-| ⬜ File upload validation | P2 | Validate file types, sizes |
-| ⬜ CORS configuration | P1 | Restrict to specific domains in production |
-
-**Rate Limiting Implementation:**
-```python
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
-
-@api_router.post("/auth/login")
-@limiter.limit("5/minute")
-async def login(request: Request, ...):
-    ...
-```
 
 ---
 
@@ -370,32 +350,37 @@ async def login(request: Request, ...):
 
 ### Backend (`/app/backend/.env`)
 ```
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=kenya_challenge
-JWT_SECRET=your-secret-key
+MONGO_URL=mongodb://localhost:27017       # Auto-set by Emergent in production (Atlas)
+DB_NAME=kenya_challenge                   # Auto-set by Emergent in production
+JWT_SECRET=your-secret-key                # Change in production!
+FRONTEND_URL=https://yourdomain.com       # For OAuth redirects
+CORS_ORIGINS=*                            # Restrict in production
 
-# Google Fit (optional)
+# Google Fit (optional - fill in when ready)
 GOOGLE_FIT_CLIENT_ID=
 GOOGLE_FIT_CLIENT_SECRET=
 GOOGLE_FIT_REDIRECT_URI=
-FRONTEND_URL=
-
-# Stripe (to implement)
-STRIPE_API_KEY=
-STRIPE_WEBHOOK_SECRET=
 
 # Email (to implement)
-SENDGRID_API_KEY=
+MAILCHIMP_API_KEY=
 ```
 
 ### Frontend (`/app/frontend/.env`)
 ```
-REACT_APP_BACKEND_URL=https://your-production-url.com
+REACT_APP_BACKEND_URL=https://yourdomain.com   # Auto-set by Emergent
+WDS_SOCKET_PORT=443
+ENABLE_HEALTH_CHECK=false
 ```
 
 ---
 
 ## Running Locally
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- MongoDB running locally on port 27017
+- yarn (not npm)
 
 ### Backend
 ```bash
@@ -403,6 +388,7 @@ cd /app/backend
 pip install -r requirements.txt
 uvicorn server:app --host 0.0.0.0 --port 8001 --reload
 ```
+The backend auto-seeds test data (users, challenges, walker types, achievement levels, sponsorship levels) on first startup.
 
 ### Frontend
 ```bash
@@ -410,45 +396,59 @@ cd /app/frontend
 yarn install
 yarn start
 ```
+Frontend runs on port 3000. All API calls go through `/api` prefix which routes to port 8001.
+
+### Production Build
+```bash
+cd /app/frontend
+CI=true yarn build
+```
+Note: `CI=true` treats ESLint warnings as errors. All warnings have been suppressed as of March 24, 2026.
 
 ---
 
-## Deployment Notes
+## Deployment (Emergent Platform)
 
-- Frontend and backend are deployed together
-- Backend serves API at `/api/*`
-- File uploads stored at `/app/backend/uploads/`
-- For production, consider:
-  - Moving uploads to S3/Cloud Storage
-  - Using Redis for session/rate limiting
-  - Adding monitoring (Sentry, LogRocket)
+The app is deployed via Emergent's native deployment:
+- Backend: FastAPI on port 8001 (managed by supervisor/uvicorn)
+- Frontend: React build served on port 3000
+- Database: MongoDB Atlas (auto-migrated by Emergent)
+- File uploads: Stored in `/app/backend/uploads/` (persisted in container)
 
----
-
-## Questions?
-
-Contact the project owner for:
-- Access to Google Cloud Console (for Fitness API)
-- Stripe account credentials
-- Domain/DNS configuration
-- Design assets (logos, brand guidelines)
+For production, consider:
+- Moving file uploads to S3/Cloud Storage for durability
+- Adding rate limiting to auth endpoints (`slowapi`)
+- Restricting CORS_ORIGINS to your domain
+- Shortening JWT expiry (currently 7 days)
 
 ---
 
-## Estimated Total Budget
+## Security Considerations
 
-| Task | Hours | Cost Range |
-|------|-------|------------|
-| Stripe Integration | 8-16 | $500-800 |
-| Email Notifications | 4-8 | $300-500 |
-| Google Fit Setup | 2-4 | $100-200 |
-| PWA Setup | 2-4 | $200-400 |
-| Security Hardening | 4-8 | $300-500 |
-| Route Map Visual | 4-8 | $300-500 |
-| Testing & QA | 4-8 | $200-400 |
-| **Total** | **28-56** | **$1,900-3,300** |
+| Item | Status | Notes |
+|------|--------|-------|
+| JWT authentication | Done | 7-day expiry |
+| Password hashing | Done | bcrypt via passlib |
+| Role-based access | Done | Admin endpoints require admin JWT |
+| Rate limiting | Not done | Add to /api/auth/* endpoints |
+| Input validation | Partial | Pydantic models validate types, review for XSS |
+| CORS | Open (*) | Restrict to production domain |
+| File upload validation | Basic | Checks file extension, not content |
+| HTTPS | Done | Enforced by Emergent/K8s |
 
 ---
 
-*Document generated: March 2026*
-*Last updated by: Emergent AI*
+## Brand & Design
+
+| Element | Value |
+|---------|-------|
+| Primary Navy | `#1a3660` |
+| Accent Orange | `#ea580c` (Tailwind `orange-600`) |
+| Success Green | `#059669` |
+| Font | System default (Tailwind) |
+| UI Library | shadcn/ui components in `/frontend/src/components/ui/` |
+| Icons | Lucide React |
+
+---
+
+*Document updated: March 24, 2026*

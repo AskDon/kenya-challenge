@@ -115,8 +115,10 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 - [x] FRONTEND: ChevronUp/ChevronDown buttons per challenge, first/last disabled appropriately
 
 ## Remaining Items
+- [ ] GiveButter payment embed (needs embed code from KEF)
 - [ ] Email system (Mailchimp integration + transactional emails for pledge notifications)
-- [ ] Update FREELANCER_HANDOFF.md and QUICK_START.md with all changes
+- [ ] Google Fit credentials (code ready, needs API keys)
+- [x] Update FREELANCER_HANDOFF.md and QUICK_START.md with all changes
 
 ## MOCKED Features
 - **GiveButter**: Placeholder UI only - needs real embed code from user
