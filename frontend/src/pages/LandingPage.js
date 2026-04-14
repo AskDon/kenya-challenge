@@ -34,7 +34,7 @@ export default function LandingPage() {
       <section className="relative min-h-[85vh] flex items-center" data-testid="hero-section">
         <div className="absolute inset-0">
           <img src={HERO_BG} alt="The Kenya Challenge" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-stone-900/40" />
+          <div className="absolute inset-0 bg-stone-900/25" />
         </div>
         <div className="relative container-app py-20">
           <div className="max-w-2xl opacity-0 animate-fade-in-up" style={{ animationFillMode: 'forwards' }}>
