@@ -6,8 +6,8 @@ import { Card, CardContent } from '../components/ui/card';
 import api from '../lib/api';
 import { ArrowRight, ArrowLeft, Footprints, Users, Heart, Trophy, Mountain, MapPin, GraduationCap, Building2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const HERO_BG = 'https://images.unsplash.com/photo-1738507967372-67c692309a07?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwxfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
-const STUDENTS_IMG = 'https://images.unsplash.com/photo-1729691032175-d6edd1581a31?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNzl8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwc3R1ZGVudHMlMjBzbWlsaW5nJTIwc2Nob29sJTIwdW5pZm9ybSUyMGtlbnlhfGVufDB8fHx8MTc3MDc0NzM1MHww&ixlib=rb-4.1.0&q=85';
+const HERO_BG = '/kenya-challenge-hero.jpg';
+const STUDENTS_IMG = '/one-student.jpg';
 const WALKERS_IMG = 'https://images.unsplash.com/photo-1632089401802-57a6747b3dd1?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjV8MHwxfHNlYXJjaHwxfHxkaXZlcnNlJTIwZ3JvdXAlMjBwZW9wbGUlMjB3YWxraW5nJTIwaGlraW5nJTIwbmF0dXJlJTIwaGFwcHl8ZW58MHx8fHwxNzcwNzQ3MzUxfDA&ixlib=rb-4.1.0&q=85';
 
 export default function LandingPage() {
@@ -33,8 +33,8 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="relative min-h-[85vh] flex items-center" data-testid="hero-section">
         <div className="absolute inset-0">
-          <img src={HERO_BG} alt="Kenya landscape" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-stone-900/70" />
+          <img src={HERO_BG} alt="The Kenya Challenge" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-stone-900/40" />
         </div>
         <div className="relative container-app py-20">
           <div className="max-w-2xl opacity-0 animate-fade-in-up" style={{ animationFillMode: 'forwards' }}>
@@ -42,11 +42,10 @@ export default function LandingPage() {
               Kenya Education Fund
             </p>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6">
-              Walk for Education.<br />Walk for Kenya.
+              Step for Impact.<br />Walk for Education.
             </h1>
             <p className="text-stone-300 text-base sm:text-lg leading-relaxed mb-8 max-w-xl">
-              Join The Kenya Challenge and walk virtual routes across Kenya while
-              raising funds for students who need your help. Every step counts.
+              Join The Kenya Challenge and walk virtual scenic routes. Each step helps provide students with the resources, mentorship, and support they need to build brighter futures.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to={user ? '/dashboard' : '/signup'}>
@@ -63,10 +62,9 @@ export default function LandingPage() {
       {/* Impact Stats */}
       <section className="py-16 md:py-20 bg-white border-b border-stone-100" data-testid="impact-section">
         <div className="container-app">
-          <p className="text-orange-600 font-medium tracking-widest uppercase text-xs text-center mb-3">25 Years of Impact</p>
-          <h2 className="text-2xl md:text-3xl font-bold text-stone-900 text-center mb-12">
-            Kenya Education Fund
-          </h2>
+          <div className="flex justify-center mb-8">
+            <img src="/kef25logo.jpg" alt="KEF 25 Years" className="h-24 md:h-32 object-contain" />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
             {[
               { num: '4,800+', label: 'Scholarships Provided', icon: GraduationCap },
@@ -95,10 +93,10 @@ export default function LandingPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
-              { step: '01', title: 'Sign Up', desc: 'Create your account and choose a pricing level that fits.', icon: Users },
-              { step: '02', title: 'Pick a Route', desc: 'Select a virtual Kenyan challenge route to walk.', icon: Mountain },
-              { step: '03', title: 'Walk & Log', desc: 'Log your daily steps or kilometers and watch your progress.', icon: Footprints },
-              { step: '04', title: 'Fundraise', desc: 'Share your page, collect sponsorships, and change lives.', icon: Heart },
+              { step: '01', title: 'Sign Up', desc: 'Create your account and choose your registration level.', icon: Users },
+              { step: '02', title: 'Pick a Route', desc: 'Select a virtual route to walk.', icon: Mountain },
+              { step: '03', title: 'Start Your Challenge', desc: 'Walk, jog or run & watch your progress.', icon: Footprints },
+              { step: '04', title: 'Fundraise', desc: 'Share your page, find sponsors & change lives.', icon: Heart },
             ].map((item) => (
               <Card key={item.step} className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300">
                 <CardContent className="p-6 md:p-8">
@@ -127,13 +125,13 @@ export default function LandingPage() {
               {/* Left arrow */}
               <button
                 onClick={() => scrollChallenges('left')}
-                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:text-orange-600 transition-colors hidden md:flex"
+                className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 md:-translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:text-orange-600 transition-colors"
                 data-testid="challenges-scroll-left"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
 
-              <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory px-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+              <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory px-8" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
                 {challenges.map((ch) => (
                   <Card key={ch.id} className="bg-stone-50 rounded-2xl border border-stone-100 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 min-w-[280px] md:min-w-[320px] snap-start flex-shrink-0" style={{ maxWidth: '340px' }}>
                     <div className="h-3 bg-gradient-to-r from-orange-500 to-emerald-600" />
@@ -157,14 +155,14 @@ export default function LandingPage() {
               {/* Right arrow */}
               <button
                 onClick={() => scrollChallenges('right')}
-                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:text-orange-600 transition-colors hidden md:flex"
+                className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 md:translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-lg border border-stone-200 flex items-center justify-center text-stone-600 hover:bg-stone-50 hover:text-orange-600 transition-colors"
                 data-testid="challenges-scroll-right"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
 
               {/* Mobile scroll hint */}
-              <p className="text-center text-xs text-stone-400 mt-2 md:hidden">Swipe to see more routes</p>
+              <p className="text-center text-xs text-stone-400 mt-2 md:hidden">Use arrows to see more routes</p>
             </div>
             {/* H2: Choose Your Route CTA */}
             <div className="text-center mt-10">
@@ -188,13 +186,10 @@ export default function LandingPage() {
                 100% of Every Donation Goes to Student Education
               </h2>
               <p className="text-stone-600 leading-relaxed mb-6">
-                In Kenya, high school is not free. Over 3.5 million children are not in school due to poverty.
-                KEF provides access to quality education, supporting students from high school through university
-                with a 99% transition rate.
+                In Kenya, high school is not free. Over 3.5 million children are not in school due to poverty. Our finish line is a world where every child has a chance to learn. In Kenya, this finish line is still far from reality as 60% of families can't afford secondary school fees.
               </p>
               <p className="text-stone-600 leading-relaxed mb-8">
-                Your participation in The Kenya Challenge directly funds scholarships, uniforms, school supplies,
-                and mentorship for students who would otherwise not have access to education.
+                KEF empowers young people in Kenya by breaking barriers to education and creating real opportunities for success. We believe in the power of youth, community, and action to transform futures and change lives.
               </p>
               <div className="flex items-center gap-8">
                 <div className="text-center">
@@ -225,7 +220,7 @@ export default function LandingPage() {
       <section className="py-16 md:py-24 bg-stone-900" data-testid="cta-section">
         <div className="container-app text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-            Ready to Walk for Kenya?
+            Ready to Walk for Education?
           </h2>
           <p className="text-stone-400 max-w-lg mx-auto mb-8">
             Join walkers from around the world. Every kilometer you walk brings a Kenyan student closer to their dreams.

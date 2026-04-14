@@ -33,7 +33,7 @@ JWT_ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Constants
-STEPS_PER_KM = 1300
+DEFAULT_STEPS_PER_KM = 1300
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -70,6 +70,8 @@ class ChallengeCreate(BaseModel):
     route_map_markers_url: Optional[str] = None
     is_active: Optional[bool] = True
     display_order: int = 0
+    send_postcards: Optional[bool] = False
+    postcards: Optional[List[dict]] = []
 
 class ChallengeUpdate(BaseModel):
     name: Optional[str] = None
@@ -81,6 +83,8 @@ class ChallengeUpdate(BaseModel):
     route_map_markers_url: Optional[str] = None
     is_active: Optional[bool] = None
     display_order: Optional[int] = None
+    send_postcards: Optional[bool] = None
+    postcards: Optional[List[dict]] = None
 
 class WalkerTypeCreate(BaseModel):
     name: str
@@ -181,6 +185,7 @@ class ConfigUpdate(BaseModel):
     logo_url: Optional[str] = None
     primary_color: Optional[str] = None
     secondary_color: Optional[str] = None
+    steps_per_km: Optional[int] = None
 
 
 # ==========================================
@@ -332,6 +337,8 @@ async def create_challenge(req: ChallengeCreate, user=Depends(get_admin_user)):
         "route_map_markers_url": req.route_map_markers_url,
         "is_active": req.is_active if req.is_active is not None else True,
         "display_order": req.display_order or next_order,
+        "send_postcards": req.send_postcards or False,
+        "postcards": req.postcards or [],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.challenges.insert_one(challenge)
@@ -452,6 +459,77 @@ async def upload_milestone_image(challenge_id: str, milestone_index: int, file: 
 
 
 # ==========================================
+# Postcard Routes (within Challenges)
+# ==========================================
+
+@api_router.post("/challenges/{challenge_id}/postcards")
+async def add_postcard(challenge_id: str, data: dict, user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    postcards = challenge.get("postcards", [])
+    postcard = {
+        "id": str(uuid.uuid4()),
+        "title": data.get("title", ""),
+        "distance_km": data.get("distance_km", 0),
+        "subject_line": data.get("subject_line", ""),
+        "body": data.get("body", ""),
+        "attachment_url": data.get("attachment_url", None),
+    }
+    postcards.append(postcard)
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"postcards": postcards}})
+    return postcard
+
+@api_router.put("/challenges/{challenge_id}/postcards/{postcard_id}")
+async def update_postcard(challenge_id: str, postcard_id: str, data: dict, user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    postcards = challenge.get("postcards", [])
+    for i, pc in enumerate(postcards):
+        if pc.get("id") == postcard_id:
+            postcards[i] = {**pc, **{k: v for k, v in data.items() if v is not None}}
+            postcards[i]["id"] = postcard_id
+            break
+    else:
+        raise HTTPException(status_code=404, detail="Postcard not found")
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"postcards": postcards}})
+    return postcards[i]
+
+@api_router.delete("/challenges/{challenge_id}/postcards/{postcard_id}")
+async def delete_postcard(challenge_id: str, postcard_id: str, user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    postcards = [pc for pc in challenge.get("postcards", []) if pc.get("id") != postcard_id]
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"postcards": postcards}})
+    return {"message": "Postcard deleted"}
+
+@api_router.post("/challenges/{challenge_id}/postcards/{postcard_id}/attachment")
+async def upload_postcard_attachment(challenge_id: str, postcard_id: str, file: UploadFile = File(...), user=Depends(get_admin_user)):
+    challenge = await db.challenges.find_one({"id": challenge_id})
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    postcards = challenge.get("postcards", [])
+    postcard_idx = next((i for i, pc in enumerate(postcards) if pc.get("id") == postcard_id), None)
+    if postcard_idx is None:
+        raise HTTPException(status_code=404, detail="Postcard not found")
+    
+    postcard_dir = UPLOADS_DIR / "postcard_attachments"
+    postcard_dir.mkdir(parents=True, exist_ok=True)
+    ext = Path(file.filename).suffix
+    filename = f"postcard_attachments/{postcard_id}{ext}"
+    file_path = UPLOADS_DIR / filename
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    
+    attachment_url = f"/api/uploads/{filename}"
+    postcards[postcard_idx]["attachment_url"] = attachment_url
+    await db.challenges.update_one({"id": challenge_id}, {"$set": {"postcards": postcards}})
+    return {"attachment_url": attachment_url}
+
+
+# ==========================================
 # Walker Type Routes
 # ==========================================
 
@@ -568,12 +646,15 @@ async def list_activities(user=Depends(get_current_user)):
 
 @api_router.post("/activities")
 async def create_activity(req: ActivityCreate, user=Depends(get_current_user)):
+    # Get steps_per_km from config
+    config = await db.app_config.find_one({"key": "main"}, {"_id": 0})
+    steps_per_km = (config or {}).get("steps_per_km", DEFAULT_STEPS_PER_KM)
     km = req.km or 0
     steps = req.steps or 0
     if steps > 0 and km == 0:
-        km = round(steps / STEPS_PER_KM, 2)
+        km = round(steps / steps_per_km, 2)
     elif km > 0 and steps == 0:
-        steps = int(km * STEPS_PER_KM)
+        steps = int(km * steps_per_km)
 
     activity = {
         "id": str(uuid.uuid4()),
@@ -1352,6 +1433,7 @@ async def get_config():
             "logo_url": "",
             "primary_color": "#ea580c",
             "secondary_color": "#059669",
+            "steps_per_km": DEFAULT_STEPS_PER_KM,
         }
     return config
 

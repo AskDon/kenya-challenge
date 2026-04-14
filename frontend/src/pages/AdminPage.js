@@ -69,7 +69,7 @@ export default function AdminPage() {
         <TabsList className="flex flex-wrap bg-stone-100 rounded-xl p-1 mb-6 gap-1">
           <TabsTrigger value="stats" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-stats"><BarChart3 className="w-3 h-3 mr-1" /> Stats</TabsTrigger>
           <TabsTrigger value="challenges" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-challenges"><Mountain className="w-3 h-3 mr-1" /> Challenges</TabsTrigger>
-          <TabsTrigger value="walker-types" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-walker-types"><Footprints className="w-3 h-3 mr-1" /> Walker Types</TabsTrigger>
+          <TabsTrigger value="walker-types" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-walker-types"><Footprints className="w-3 h-3 mr-1" /> Registration Levels</TabsTrigger>
           <TabsTrigger value="achievements" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-achievements"><Award className="w-3 h-3 mr-1" /> Achievements</TabsTrigger>
           <TabsTrigger value="users" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-users"><Users className="w-3 h-3 mr-1" /> Users</TabsTrigger>
           <TabsTrigger value="corporate" className="rounded-lg text-xs sm:text-sm" data-testid="admin-tab-corporate"><Building2 className="w-3 h-3 mr-1" /> Corporate</TabsTrigger>
@@ -174,16 +174,22 @@ export default function AdminPage() {
 }
 
 function ChallengesAdmin({ challenges, onRefresh }) {
-  const [form, setForm] = useState({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true });
+  const [form, setForm] = useState({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true, send_postcards: false });
   const [editing, setEditing] = useState(null);
   const [open, setOpen] = useState(false);
   const [milestoneStr, setMilestoneStr] = useState('');
   const [uploadingMap, setUploadingMap] = useState(null);
   const [uploadingMilestonePhoto, setUploadingMilestonePhoto] = useState(null);
   const mapInputRef = useRef(null);
+  // Postcard state
+  const [postcardOpen, setPostcardOpen] = useState(false);
+  const [postcardChallengeId, setPostcardChallengeId] = useState(null);
+  const [postcardForm, setPostcardForm] = useState({ title: '', distance_km: '', subject_line: '', body: '' });
+  const [editingPostcard, setEditingPostcard] = useState(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(null);
 
   const openCreate = () => {
-    setForm({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true });
+    setForm({ name: '', description: '', total_distance_km: '', milestones: [], is_active: true, send_postcards: false });
     setMilestoneStr('');
     setEditing(null);
     setOpen(true);
@@ -196,7 +202,8 @@ function ChallengesAdmin({ challenges, onRefresh }) {
       total_distance_km: String(ch.total_distance_km), 
       milestones: ch.milestones || [],
       is_active: ch.is_active !== false,
-      route_map_url: ch.route_map_url || null
+      route_map_url: ch.route_map_url || null,
+      send_postcards: ch.send_postcards || false
     });
     setMilestoneStr(ch.milestones?.map(m => `${m.distance_km}:${m.title}:${m.description || ''}`).join('\n') || '');
     setEditing(ch.id);
@@ -225,6 +232,7 @@ function ChallengesAdmin({ challenges, onRefresh }) {
       total_distance_km: parseFloat(form.total_distance_km),
       milestones: parseMilestones(milestoneStr),
       is_active: form.is_active,
+      send_postcards: form.send_postcards,
     };
     try {
       if (editing) {
@@ -268,6 +276,59 @@ function ChallengesAdmin({ challenges, onRefresh }) {
       await api.post('/challenges/reorder', { ordered_ids });
       onRefresh();
     } catch { toast.error('Failed to reorder'); }
+  };
+
+  // Postcard handlers
+  const openAddPostcard = (challengeId) => {
+    setPostcardChallengeId(challengeId);
+    setPostcardForm({ title: '', distance_km: '', subject_line: '', body: '' });
+    setEditingPostcard(null);
+    setPostcardOpen(true);
+  };
+  const openEditPostcard = (challengeId, pc) => {
+    setPostcardChallengeId(challengeId);
+    setPostcardForm({ title: pc.title, distance_km: String(pc.distance_km), subject_line: pc.subject_line, body: pc.body });
+    setEditingPostcard(pc.id);
+    setPostcardOpen(true);
+  };
+  const handleSavePostcard = async () => {
+    const payload = { title: postcardForm.title, distance_km: parseFloat(postcardForm.distance_km) || 0, subject_line: postcardForm.subject_line, body: postcardForm.body };
+    try {
+      if (editingPostcard) {
+        await api.put(`/challenges/${postcardChallengeId}/postcards/${editingPostcard}`, payload);
+        toast.success('Postcard updated');
+      } else {
+        await api.post(`/challenges/${postcardChallengeId}/postcards`, payload);
+        toast.success('Postcard added');
+      }
+      setPostcardOpen(false);
+      onRefresh();
+    } catch (err) { toast.error(err.response?.data?.detail || 'Failed to save postcard'); }
+  };
+  const handleDeletePostcard = async (challengeId, postcardId) => {
+    if (!window.confirm('Delete this postcard?')) return;
+    try {
+      await api.delete(`/challenges/${challengeId}/postcards/${postcardId}`);
+      toast.success('Postcard deleted');
+      onRefresh();
+    } catch { toast.error('Failed to delete postcard'); }
+  };
+  const handleTogglePostcards = async (ch) => {
+    try {
+      await api.put(`/challenges/${ch.id}`, { send_postcards: !ch.send_postcards });
+      onRefresh();
+    } catch { toast.error('Failed to update'); }
+  };
+  const handleUploadAttachment = async (challengeId, postcardId, file) => {
+    setUploadingAttachment(postcardId);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      await api.post(`/challenges/${challengeId}/postcards/${postcardId}/attachment`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      toast.success('Attachment uploaded');
+      onRefresh();
+    } catch { toast.error('Failed to upload attachment'); }
+    finally { setUploadingAttachment(null); }
   };
 
   const handleUploadMap = async (challengeId, file) => {
@@ -349,6 +410,13 @@ function ChallengesAdmin({ challenges, onRefresh }) {
                     <p className="text-xs text-stone-400">Show this challenge to walkers</p>
                   </div>
                   <Switch checked={form.is_active} onCheckedChange={(v) => setForm(f => ({...f, is_active: v}))} data-testid="admin-challenge-active" />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50">
+                  <div>
+                    <p className="text-sm font-medium text-stone-900">Send a Postcard?</p>
+                    <p className="text-xs text-stone-400">Enable surprise email postcards at distance milestones</p>
+                  </div>
+                  <Switch checked={form.send_postcards} onCheckedChange={(v) => setForm(f => ({...f, send_postcards: v}))} data-testid="admin-challenge-postcards-toggle" />
                 </div>
                 <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-challenge-save-btn">
                   {editing ? 'Update' : 'Create'} Challenge
@@ -446,10 +514,58 @@ function ChallengesAdmin({ challenges, onRefresh }) {
                     ))}
                   </div>
                 )}
+                {/* Postcards Section */}
+                {ch.send_postcards && (
+                  <div className="space-y-1 mt-2">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[10px] text-stone-400 font-medium uppercase tracking-wider">Postcards ({(ch.postcards || []).length})</p>
+                      <button onClick={() => openAddPostcard(ch.id)} className="text-[10px] text-orange-600 hover:text-orange-700 font-medium" data-testid={`add-postcard-${ch.id}`}>+ Add Postcard</button>
+                    </div>
+                    {(ch.postcards || []).map(pc => (
+                      <div key={pc.id} className="flex items-center gap-2 p-2 rounded-lg bg-white border border-stone-100">
+                        <Mail className="w-4 h-4 text-orange-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-stone-700 truncate">{pc.title}</p>
+                          <p className="text-[10px] text-stone-400">{pc.distance_km}km &middot; {pc.attachment_url ? 'Has attachment' : 'No attachment'}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <label className="cursor-pointer">
+                            <input type="file" className="hidden" onChange={(e) => {
+                              const f = e.target.files?.[0]; if (f) handleUploadAttachment(ch.id, pc.id, f);
+                            }} />
+                            <Badge className="bg-stone-100 text-stone-600 hover:bg-stone-200 cursor-pointer text-[10px] rounded-full">
+                              {uploadingAttachment === pc.id ? '...' : pc.attachment_url ? 'Replace' : 'Attach'}
+                            </Badge>
+                          </label>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => openEditPostcard(ch.id, pc)}><Pencil className="w-3 h-3 text-stone-400" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={() => handleDeletePostcard(ch.id, pc.id)}><Trash2 className="w-3 h-3 text-red-400" /></Button>
+                        </div>
+                      </div>
+                    ))}
+                    {(ch.postcards || []).length === 0 && (
+                      <p className="text-[10px] text-stone-300 italic px-1">No postcards defined yet</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
+
+        {/* Postcard Add/Edit Dialog */}
+        <Dialog open={postcardOpen} onOpenChange={setPostcardOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader><DialogTitle>{editingPostcard ? 'Edit Postcard' : 'Add Postcard'}</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <div><Label className="text-sm">Title</Label><Input value={postcardForm.title} onChange={e => setPostcardForm(f => ({...f, title: e.target.value}))} placeholder="e.g., Halfway There!" className="mt-1 rounded-xl" data-testid="postcard-title" /></div>
+              <div><Label className="text-sm">Distance (km)</Label><Input type="number" value={postcardForm.distance_km} onChange={e => setPostcardForm(f => ({...f, distance_km: e.target.value}))} placeholder="e.g., 50" className="mt-1 rounded-xl" data-testid="postcard-distance" /></div>
+              <div><Label className="text-sm">Subject Line</Label><Input value={postcardForm.subject_line} onChange={e => setPostcardForm(f => ({...f, subject_line: e.target.value}))} placeholder="Email subject line" className="mt-1 rounded-xl" data-testid="postcard-subject" /></div>
+              <div><Label className="text-sm">Body</Label><Textarea value={postcardForm.body} onChange={e => setPostcardForm(f => ({...f, body: e.target.value}))} placeholder="Email body content..." rows={4} className="mt-1 rounded-xl" data-testid="postcard-body" /></div>
+              <p className="text-[10px] text-stone-400">Attachment can be uploaded after saving the postcard.</p>
+              <Button onClick={handleSavePostcard} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="postcard-save-btn">{editingPostcard ? 'Update' : 'Add'} Postcard</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
@@ -483,7 +599,7 @@ function WalkerTypesAdmin({ walkerTypes, onRefresh }) {
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-bold text-stone-900">Walker Types ({walkerTypes.length})</h3>
+            <h3 className="text-lg font-bold text-stone-900">Registration Levels ({walkerTypes.length})</h3>
             <p className="text-xs text-stone-400 mt-0.5">Registration fee levels for walkers</p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
@@ -493,7 +609,7 @@ function WalkerTypesAdmin({ walkerTypes, onRefresh }) {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editing ? 'Edit Walker Type' : 'New Walker Type'}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editing ? 'Edit Registration Level' : 'New Registration Level'}</DialogTitle></DialogHeader>
               <div className="space-y-3">
                 <div><Label className="text-sm">Name</Label><Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-name" /></div>
                 <div><Label className="text-sm">Cost (USD)</Label><Input type="number" value={form.cost_usd} onChange={e => setForm(f => ({...f, cost_usd: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-cost" /></div>
@@ -591,13 +707,18 @@ function AchievementLevelsAdmin({ levels, onRefresh }) {
 }
 
 function ConfigAdmin({ config, onRefresh }) {
-  const [form, setForm] = useState({ name: config.name || '', logo_url: config.logo_url || '', primary_color: config.primary_color || '', secondary_color: config.secondary_color || '' });
+  const [form, setForm] = useState({ name: config.name || '', logo_url: config.logo_url || '', primary_color: config.primary_color || '', secondary_color: config.secondary_color || '', steps_per_km: config.steps_per_km || 1300 });
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    const stepsVal = parseInt(form.steps_per_km) || 1300;
+    if (stepsVal < 1100 || stepsVal > 1600) {
+      toast.error('Steps per km must be between 1100 and 1600');
+      return;
+    }
     setSaving(true);
     try {
-      await api.put('/admin/config', form);
+      await api.put('/admin/config', { ...form, steps_per_km: stepsVal });
       toast.success('Config updated');
       onRefresh();
     } catch { toast.error('Failed to update config'); }
@@ -613,6 +734,11 @@ function ConfigAdmin({ config, onRefresh }) {
           <div><Label className="text-sm">Logo URL</Label><Input value={form.logo_url} onChange={e => setForm(f => ({...f, logo_url: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-config-logo" /></div>
           <div><Label className="text-sm">Primary Color</Label><Input value={form.primary_color} onChange={e => setForm(f => ({...f, primary_color: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-config-primary" /></div>
           <div><Label className="text-sm">Secondary Color</Label><Input value={form.secondary_color} onChange={e => setForm(f => ({...f, secondary_color: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-config-secondary" /></div>
+          <div>
+            <Label className="text-sm">Steps per Kilometer</Label>
+            <Input type="number" min={1100} max={1600} value={form.steps_per_km} onChange={e => setForm(f => ({...f, steps_per_km: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-config-steps-per-km" />
+            <p className="text-[10px] text-stone-400 mt-1">Used to convert steps to km when logging activity (min 1100, max 1600)</p>
+          </div>
           <Button onClick={handleSave} disabled={saving} className="rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-config-save-btn">
             {saving ? 'Saving...' : 'Save Config'}
           </Button>

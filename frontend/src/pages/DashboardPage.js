@@ -271,7 +271,7 @@ export default function DashboardPage() {
             <Mountain className="w-12 h-12 text-orange-300 mx-auto mb-4" />
             <h2 className="text-xl font-bold text-stone-900 mb-2">Pick Your Challenge</h2>
             <p className="text-stone-500 mb-6 max-w-md mx-auto">
-              Choose a virtual Kenyan route and walker type to begin your walking journey.
+              Choose a virtual Kenyan route and registration level to begin your walking journey.
             </p>
             <Link to="/onboarding">
               <Button className="rounded-full bg-orange-600 hover:bg-orange-700 text-white font-medium px-8 py-6 h-auto" data-testid="dashboard-pick-challenge-btn">
@@ -455,7 +455,7 @@ export default function DashboardPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Walker Type</p>
+                      <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Registration Level</p>
                       <p className="text-lg font-bold text-stone-900 mt-1">{progress.walker_type.name}</p>
                       <p className="text-sm text-stone-500">${progress.walker_type.cost_usd} registration fee</p>
                     </div>

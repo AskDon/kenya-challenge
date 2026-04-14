@@ -14,7 +14,7 @@ import {
   Plus, Heart, Copy, CreditCard, Trash2, Award, X, UserPlus, Camera
 } from 'lucide-react';
 
-const STEPS = ['Challenge', 'Walker Type', 'Team', 'Invite Supporters', 'Pay'];
+const STEPS = ['Challenge', 'Registration Level', 'Team', 'Invite Supporters', 'Pay'];
 
 export default function OnboardingPage() {
   const { user, fetchUser } = useAuth();
@@ -236,11 +236,11 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* Step 1: Select Walker Type */}
+      {/* Step 1: Select Registration Level */}
       {step === 1 && (
         <div data-testid="onboarding-step-walker-type">
-          <h2 className="text-xl md:text-2xl font-bold text-stone-900 mb-2">Choose Your Walker Type</h2>
-          <p className="text-stone-500 text-sm mb-6">Select your registration level. Your fee goes directly to KEF.</p>
+          <h2 className="text-xl md:text-2xl font-bold text-stone-900 mb-2">Choose Your Registration Level</h2>
+          <p className="text-stone-500 text-sm mb-6">Select your registration level. 100% of your fees goes directly to help a student go to school.</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
             {walkerTypes.map((wt) => (
               <button key={wt.id} onClick={() => setSelectedType(wt.id)} className="text-left w-full" data-testid={`onboard-type-${wt.id}`}>
@@ -633,7 +633,7 @@ export default function OnboardingPage() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-stone-50">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-orange-600" />
-                    <span className="text-sm text-stone-700">Walker Type</span>
+                    <span className="text-sm text-stone-700">Registration Level</span>
                   </div>
                   <span className="text-sm font-bold text-stone-900">
                     {selectedTypeObj?.name}

@@ -46,7 +46,7 @@ export default function ChallengesPage() {
     <div className="container-app py-8 md:py-12" data-testid="challenges-page">
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-stone-900">Choose Your Challenge</h1>
-        <p className="text-stone-500 mt-1">Pick a virtual Kenyan route and your walker type.</p>
+        <p className="text-stone-500 mt-1">Pick a virtual Kenyan route and your registration level.</p>
       </div>
 
       {/* Challenges */}
@@ -89,7 +89,7 @@ export default function ChallengesPage() {
 
       {/* Walker Types */}
       <div className="mb-10">
-        <p className="text-orange-600 font-medium tracking-widest uppercase text-xs mb-4">Choose Your Walker Type</p>
+        <p className="text-orange-600 font-medium tracking-widest uppercase text-xs mb-4">Choose Your Registration Level</p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {walkerTypes.map((wt) => (
             <button key={wt.id} onClick={() => setSelectedType(wt.id)} className="text-left w-full" data-testid={`walker-type-card-${wt.id}`}>
