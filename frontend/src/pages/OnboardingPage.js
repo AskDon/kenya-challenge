@@ -202,41 +202,37 @@ export default function OnboardingPage() {
           <div className="grid grid-cols-1 gap-4">
             {challenges.map((ch) => (
               <button key={ch.id} onClick={() => setSelectedChallenge(ch.id)} className="text-left w-full" data-testid={`onboard-challenge-${ch.id}`}>
-                <Card className={`rounded-2xl border-2 transition-all duration-200 overflow-hidden ${
+                <Card className={`rounded-2xl border-2 transition-all duration-200 ${
                   selectedChallenge === ch.id
                     ? 'border-orange-500 shadow-[0_4px_20px_-2px_rgba(234,88,12,0.2)]'
                     : 'border-stone-100 hover:border-stone-200'
                 }`}>
-                  <CardContent className="p-0">
-                    <div className="flex items-stretch">
-                      {ch.route_map_url && (
-                        <div className="w-32 md:w-40 shrink-0 bg-stone-100">
-                          <img src={ch.route_map_url} alt={ch.name} className="w-full h-full object-cover" />
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Mountain className="w-5 h-5 text-orange-600" />
+                          <h3 className="text-base font-bold text-stone-900">{ch.name}</h3>
+                          <Badge variant="outline" className="text-xs rounded-full border-stone-200">{ch.total_distance_km} km</Badge>
                         </div>
-                      )}
-                      <div className="flex-1 p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Mountain className="w-5 h-5 text-orange-600" />
-                              <h3 className="text-base font-bold text-stone-900">{ch.name}</h3>
-                              <Badge variant="outline" className="text-xs rounded-full border-stone-200">{ch.total_distance_km} km</Badge>
-                            </div>
-                            <p className="text-sm text-stone-500 leading-relaxed mb-2">{ch.description}</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {ch.milestones?.slice(0, 4).map((m, i) => (
-                                <span key={i} className="text-xs bg-stone-50 text-stone-600 px-2 py-0.5 rounded-full">{m.title}</span>
-                              ))}
-                            </div>
-                          </div>
-                          {selectedChallenge === ch.id && (
-                            <div className="w-7 h-7 rounded-full bg-orange-600 flex items-center justify-center shrink-0">
-                              <Check className="w-4 h-4 text-white" />
-                            </div>
-                          )}
+                        <p className="text-sm text-stone-500 leading-relaxed mb-2">{ch.description}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {ch.milestones?.slice(0, 4).map((m, i) => (
+                            <span key={i} className="text-xs bg-stone-50 text-stone-600 px-2 py-0.5 rounded-full">{m.title}</span>
+                          ))}
                         </div>
                       </div>
+                      {selectedChallenge === ch.id && (
+                        <div className="w-7 h-7 rounded-full bg-orange-600 flex items-center justify-center shrink-0">
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
+                      )}
                     </div>
+                    {ch.route_map_url && (
+                      <div className="mt-3 rounded-lg overflow-hidden border border-stone-200 bg-white">
+                        <img src={ch.route_map_url} alt={`${ch.name} route`} className="w-full h-auto object-contain" />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </button>

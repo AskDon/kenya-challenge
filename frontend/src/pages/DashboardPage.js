@@ -332,7 +332,7 @@ export default function DashboardPage() {
                   <img
                     src={progress.challenge.route_map_url}
                     alt={`${progress.challenge.name} route map`}
-                    className="w-full h-full object-cover min-h-[280px] max-h-[400px]"
+                    className="w-full h-auto object-contain"
                   />
                 </Card>
               ) : (
