@@ -3,13 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
 import { Footprints, MapPin, Heart, Users, ArrowRight, Mountain, TrendingUp, Share2, Flag, Camera, Trophy, Star } from 'lucide-react';
 import { toast } from 'sonner';
-
-const ROUTE_BG = 'https://images.unsplash.com/photo-1759767119566-e7dad33d540b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDV8MHwxfHNlYXJjaHwyfHxrZW55YSUyMGxhbmRzY2FwZSUyMHJvYWQlMjByZWQlMjBlYXJ0aCUyMG1vdW50JTIwa2VueWF8ZW58MHx8fHwxNzcwNzQ3MzM3fDA&ixlib=rb-4.1.0&q=85';
 
 function copyToClipboard(text) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -43,80 +40,81 @@ function fallbackCopy(text) {
 function RouteMap({ challenge, totalKm, progressPct, milestones }) {
   if (!challenge) return null;
   const sortedMilestones = [...(milestones || [])].sort((a, b) => a.distance_km - b.distance_km);
+  const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
 
   return (
     <div className="relative bg-stone-50 rounded-xl p-4 md:p-6" data-testid="route-map">
-      {/* Map background */}
-      <div className="relative">
-        {/* Route line */}
-        <div className="relative h-16 md:h-20 flex items-center">
-          {/* Background track */}
-          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-2 bg-stone-200 rounded-full" />
-          {/* Completed track */}
-          <div
-            className="absolute left-4 top-1/2 -translate-y-1/2 h-2 bg-orange-500 rounded-full transition-all duration-500"
-            style={{ width: `calc(${Math.min(progressPct, 100)}% - 2rem)` }}
-          />
-          {/* Milestone markers */}
-          {sortedMilestones.map((m, i) => {
-            const pct = (m.distance_km / challenge.total_distance_km) * 100;
-            const reached = totalKm >= m.distance_km;
-            return (
-              <div
-                key={i}
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
-                style={{ left: `calc(${pct}% * 0.92 + 4%)` }}
-              >
-                <div className={`w-4 h-4 rounded-full border-2 ${
-                  reached
-                    ? 'bg-orange-500 border-orange-600'
-                    : 'bg-white border-stone-300'
-                }`} title={m.title} />
-              </div>
-            );
-          })}
-          {/* Start marker */}
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-            <div className="w-5 h-5 rounded-full bg-emerald-500 border-2 border-emerald-600 flex items-center justify-center">
-              <Flag className="w-2.5 h-2.5 text-white" />
+      {/* Progress bar track */}
+      <div className="relative h-10 flex items-center mb-2">
+        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-3 bg-stone-200 rounded-full" />
+        <div
+          className="absolute left-4 top-1/2 -translate-y-1/2 h-3 bg-orange-500 rounded-full transition-all duration-500"
+          style={{ width: `calc(${Math.min(progressPct, 100)}% - 2rem)` }}
+        />
+        {/* Milestone markers */}
+        {sortedMilestones.map((m, i) => {
+          const pct = (m.distance_km / challenge.total_distance_km) * 100;
+          const reached = totalKm >= m.distance_km;
+          return (
+            <div
+              key={i}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
+              style={{ left: `calc(${pct}% * 0.92 + 4%)` }}
+            >
+              <div className={`w-5 h-5 rounded-full border-2 ${
+                reached ? 'bg-orange-500 border-orange-600' : 'bg-white border-stone-300'
+              }`} title={m.title} />
             </div>
+          );
+        })}
+        {/* Start marker */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+          <div className="w-6 h-6 rounded-full bg-emerald-500 border-2 border-emerald-600 flex items-center justify-center">
+            <Flag className="w-3 h-3 text-white" />
           </div>
-          {/* Finish marker */}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
-            <div className="w-5 h-5 rounded-full bg-stone-800 border-2 border-stone-900 flex items-center justify-center">
-              <Flag className="w-2.5 h-2.5 text-white" />
+        </div>
+        {/* Finish marker */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+          <div className="w-6 h-6 rounded-full bg-stone-800 border-2 border-stone-900 flex items-center justify-center">
+            <Flag className="w-3 h-3 text-white" />
+          </div>
+        </div>
+        {/* Walker position */}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500"
+          style={{ left: `calc(${Math.min(progressPct, 100)}% * 0.92 + 4%)` }}
+        >
+          <div className="relative">
+            <div className="w-9 h-9 rounded-full bg-orange-600 border-3 border-white shadow-lg flex items-center justify-center animate-pulse">
+              <Footprints className="w-4.5 h-4.5 text-white" />
             </div>
-          </div>
-          {/* Walker position */}
-          <div
-            className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500"
-            style={{ left: `calc(${Math.min(progressPct, 100)}% * 0.92 + 4%)` }}
-          >
-            <div className="relative">
-              <div className="w-8 h-8 rounded-full bg-orange-600 border-3 border-white shadow-lg flex items-center justify-center animate-pulse">
-                <Footprints className="w-4 h-4 text-white" />
-              </div>
-              <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
-                {totalKm} km
-              </div>
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
+              {progressPct}% &middot; {totalKm} km
             </div>
           </div>
         </div>
-        {/* Milestone labels */}
-        <div className="relative h-12 mt-1">
+      </div>
+      {/* Milestone labels + pictures */}
+      <div className="relative mt-2">
+        <div className="flex justify-between px-2" style={{ paddingLeft: '4%', paddingRight: '4%' }}>
           {sortedMilestones.map((m, i) => {
-            const pct = (m.distance_km / challenge.total_distance_km) * 100;
             const reached = totalKm >= m.distance_km;
+            const imgUrl = m.image_url ? (m.image_url.startsWith('http') ? m.image_url : `${API_BASE}${m.image_url}`) : null;
             return (
-              <div
-                key={i}
-                className="absolute -translate-x-1/2 text-center"
-                style={{ left: `calc(${pct}% * 0.92 + 4%)`, maxWidth: '80px' }}
-              >
-                <p className={`text-[9px] font-medium leading-tight ${reached ? 'text-orange-600' : 'text-stone-400'}`}>
+              <div key={i} className="flex flex-col items-center" style={{ width: `${90 / sortedMilestones.length}%` }}>
+                <p className={`text-[9px] md:text-[10px] font-medium text-center leading-tight ${reached ? 'text-orange-600' : 'text-stone-400'}`}>
                   {m.title}
                 </p>
-                <p className="text-[8px] text-stone-300">{m.distance_km}km</p>
+                <p className="text-[8px] text-stone-300 mb-1">{m.distance_km}km</p>
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-stone-200 overflow-hidden border border-stone-200">
+                  {imgUrl ? (
+                    <img src={imgUrl} alt={m.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <MapPin className="w-4 h-4 text-stone-300" />
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -282,80 +280,79 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: 'Distance', value: `${progress.total_km} km`, icon: MapPin, color: 'bg-orange-50 text-orange-600' },
-              { label: 'Steps', value: progress.total_steps?.toLocaleString(), icon: Footprints, color: 'bg-emerald-50 text-emerald-600' },
-              { label: 'Raised', value: `$${progress.total_raised}`, icon: Heart, color: 'bg-rose-50 text-rose-600' },
-              { label: 'Supporters', value: progress.sponsors_count, icon: Users, color: 'bg-sky-50 text-sky-600' },
-            ].map((stat) => (
-              <Card key={stat.label} className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
-                <CardContent className="p-5">
-                  <div className={`w-9 h-9 rounded-xl ${stat.color.split(' ')[0]} flex items-center justify-center mb-3`}>
-                    <stat.icon className={`w-4 h-4 ${stat.color.split(' ')[1]}`} />
-                  </div>
-                  <p className="text-2xl font-bold text-stone-900">{stat.value}</p>
-                  <p className="text-xs text-stone-400 mt-0.5 uppercase tracking-wider font-medium">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Challenge Progress */}
-          <Card className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden" data-testid="challenge-progress-card">
-            <div className="relative h-40 md:h-48">
-              <img src={ROUTE_BG} alt="Kenya route" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-stone-900/50" />
-              <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <div className="flex items-center justify-between text-white mb-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-stone-300 font-medium">Current Challenge</p>
-                    <p className="text-lg font-bold">{progress.challenge.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">{progress.progress_pct}%</p>
-                    <p className="text-xs text-stone-300">{progress.total_km} / {progress.challenge.total_distance_km} km</p>
-                  </div>
+          {/* Challenge Title + Next Milestone + Stats + Map */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: Challenge info + Stats */}
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Your Current Challenge</p>
+                  <p className="text-lg font-bold text-stone-900">{progress.challenge.name}</p>
                 </div>
-                <Progress value={progress.progress_pct} className="h-3 bg-white/20" />
-              </div>
-            </div>
-            <CardContent className="p-6">
-              {/* Route Map */}
-              <RouteMap
-                challenge={progress.challenge}
-                totalKm={progress.total_km}
-                progressPct={progress.progress_pct}
-                milestones={progress.challenge.milestones}
-              />
-
-              {/* Milestone info */}
-              <div className="flex flex-wrap gap-4 mt-4">
-                {progress.current_milestone && (
-                  <div className="flex-1 min-w-[200px]">
-                    <p className="text-xs text-stone-400 uppercase tracking-wider font-medium mb-1">Current Location</p>
-                    <p className="text-sm font-bold text-stone-900">{progress.current_milestone.title}</p>
-                    <p className="text-xs text-stone-500">{progress.current_milestone.description}</p>
-                  </div>
-                )}
                 {progress.next_milestone && (
-                  <div className="flex-1 min-w-[200px]">
-                    <p className="text-xs text-stone-400 uppercase tracking-wider font-medium mb-1">Next Milestone</p>
-                    <p className="text-sm font-bold text-stone-900">{progress.next_milestone.title}</p>
-                    <p className="text-xs text-stone-500">{progress.next_milestone.distance_km - progress.total_km > 0 ? `${(progress.next_milestone.distance_km - progress.total_km).toFixed(1)} km away` : 'Reached!'}</p>
+                  <div>
+                    <p className="text-xs text-stone-400 uppercase tracking-wider font-medium">Next Milestone</p>
+                    <p className="text-lg font-bold text-stone-900">{progress.next_milestone.title}</p>
+                    <p className="text-xs text-stone-500">{(progress.next_milestone.distance_km - progress.total_km).toFixed(1)} km away</p>
                   </div>
                 )}
                 {isComplete && !progress.next_milestone && (
-                  <div className="flex-1 min-w-[200px]">
-                    <p className="text-xs text-emerald-600 uppercase tracking-wider font-bold mb-1">Challenge Complete!</p>
-                    <p className="text-sm font-bold text-stone-900">You've completed {progress.challenge.name}</p>
-                    <p className="text-xs text-stone-500">{progress.total_km} km walked</p>
+                  <div>
+                    <p className="text-xs text-emerald-600 uppercase tracking-wider font-bold">Challenge Complete!</p>
+                    <p className="text-sm font-bold text-stone-900">{progress.total_km} km walked</p>
                   </div>
                 )}
               </div>
-            </CardContent>
-          </Card>
+
+              {/* 2x2 Stat Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { label: 'Distance', value: `${progress.total_km} km`, icon: MapPin, color: 'bg-orange-50 text-orange-600' },
+                  { label: 'Steps', value: progress.total_steps?.toLocaleString(), icon: Footprints, color: 'bg-emerald-50 text-emerald-600' },
+                  { label: 'Raised', value: `$${progress.total_raised}`, icon: Heart, color: 'bg-rose-50 text-rose-600' },
+                  { label: 'Supporters', value: progress.sponsors_count, icon: Users, color: 'bg-sky-50 text-sky-600' },
+                ].map((stat) => (
+                  <Card key={stat.label} className="bg-white rounded-2xl border border-stone-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)]">
+                    <CardContent className="p-4">
+                      <div className={`w-9 h-9 rounded-xl ${stat.color.split(' ')[0]} flex items-center justify-center mb-2`}>
+                        <stat.icon className={`w-4 h-4 ${stat.color.split(' ')[1]}`} />
+                      </div>
+                      <p className="text-2xl font-bold text-stone-900">{stat.value}</p>
+                      <p className="text-xs text-stone-400 mt-0.5 uppercase tracking-wider font-medium">{stat.label}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Route Map Image */}
+            <div className="flex items-stretch">
+              {progress.challenge.route_map_url ? (
+                <Card className="bg-white rounded-2xl border border-stone-100 overflow-hidden w-full" data-testid="dashboard-route-map-image">
+                  <img
+                    src={progress.challenge.route_map_url}
+                    alt={`${progress.challenge.name} route map`}
+                    className="w-full h-full object-cover min-h-[280px] max-h-[400px]"
+                  />
+                </Card>
+              ) : (
+                <Card className="bg-stone-50 rounded-2xl border border-stone-100 w-full flex items-center justify-center min-h-[280px]">
+                  <div className="text-center p-8">
+                    <Mountain className="w-12 h-12 text-stone-300 mx-auto mb-3" />
+                    <p className="text-sm text-stone-400">Route map not yet uploaded</p>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Progress Bar with Milestones + Pictures */}
+          <RouteMap
+            challenge={progress.challenge}
+            totalKm={progress.total_km}
+            progressPct={progress.progress_pct}
+            milestones={progress.challenge.milestones}
+          />
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

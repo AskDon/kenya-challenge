@@ -134,7 +134,13 @@ export default function LandingPage() {
               <div ref={scrollRef} className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory px-8" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
                 {challenges.map((ch) => (
                   <Card key={ch.id} className="bg-stone-50 rounded-2xl border border-stone-100 overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 min-w-[280px] md:min-w-[320px] snap-start flex-shrink-0" style={{ maxWidth: '340px' }}>
-                    <div className="h-3 bg-gradient-to-r from-orange-500 to-emerald-600" />
+                    {ch.route_map_url ? (
+                      <div className="h-40 bg-stone-100">
+                        <img src={ch.route_map_url} alt={ch.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-3 bg-gradient-to-r from-orange-500 to-emerald-600" />
+                    )}
                     <CardContent className="p-6">
                       <div className="flex items-center gap-2 mb-3">
                         <Mountain className="w-5 h-5 text-orange-600" />
