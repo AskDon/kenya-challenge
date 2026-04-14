@@ -208,12 +208,12 @@ export default function OnboardingPage() {
                     : 'border-stone-100 hover:border-stone-200'
                 }`}>
                   <CardContent className="p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <Mountain className="w-5 h-5 text-orange-600" />
+                          <Mountain className="w-5 h-5 text-orange-600 shrink-0" />
                           <h3 className="text-base font-bold text-stone-900">{ch.name}</h3>
-                          <Badge variant="outline" className="text-xs rounded-full border-stone-200">{ch.total_distance_km} km</Badge>
+                          <Badge variant="outline" className="text-xs rounded-full border-stone-200 shrink-0">{ch.total_distance_km} km</Badge>
                         </div>
                         <p className="text-sm text-stone-500 leading-relaxed mb-2">{ch.description}</p>
                         <div className="flex flex-wrap gap-1.5">
@@ -222,17 +222,17 @@ export default function OnboardingPage() {
                           ))}
                         </div>
                       </div>
+                      {ch.route_map_url && (
+                        <div className="w-1/3 shrink-0 rounded-lg overflow-hidden border border-stone-200 bg-white">
+                          <img src={ch.route_map_url} alt={`${ch.name} route`} className="w-full h-auto object-contain" />
+                        </div>
+                      )}
                       {selectedChallenge === ch.id && (
                         <div className="w-7 h-7 rounded-full bg-orange-600 flex items-center justify-center shrink-0">
                           <Check className="w-4 h-4 text-white" />
                         </div>
                       )}
                     </div>
-                    {ch.route_map_url && (
-                      <div className="mt-3 rounded-lg overflow-hidden border border-stone-200 bg-white">
-                        <img src={ch.route_map_url} alt={`${ch.name} route`} className="w-full h-auto object-contain" />
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </button>
