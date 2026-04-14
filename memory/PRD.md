@@ -131,6 +131,17 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 - [x] BACKEND: POST /api/challenges/{id}/postcards/{id}/attachment file upload
 - [x] BUILD: Fixed ESLint warnings that blocked CI=true deployment builds
 
+### April 14, 2026 - Route Maps & Dashboard Redesign
+- [x] HOME: Route map images shown below each challenge card (object-contain, no cropping)
+- [x] HOME: CTA changed to "Every step you walk brings a Kenyan student closer to their dreams"
+- [x] HOME: Footer contact info for Monsheila added
+- [x] ONBOARDING: Route map images shown below each challenge card in selection step
+- [x] DASHBOARD: Removed top progress bar with background image overlay
+- [x] DASHBOARD: New 2-column layout — stats (2x2 grid) left, route map image right
+- [x] DASHBOARD: Challenge title + Next Milestone info above stats
+- [x] DASHBOARD: Single bold progress bar at bottom with milestone markers, labels, distances, and picture slots
+- [x] ADMIN: Display order inputs for Sponsorship Levels, Walker Types, Achievement Levels have min=1 and Math.max(1,...) clamping
+
 ## Remaining Items
 - [ ] GiveButter payment embed (needs embed code from KEF)
 - [ ] Email system (Mailchimp integration + transactional emails for pledge notifications)
