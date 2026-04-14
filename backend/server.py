@@ -1440,6 +1440,9 @@ async def get_config():
 @api_router.put("/admin/config")
 async def update_config(req: ConfigUpdate, user=Depends(get_admin_user)):
     updates = {k: v for k, v in req.model_dump().items() if v is not None}
+    if "steps_per_km" in updates:
+        if updates["steps_per_km"] < 1100 or updates["steps_per_km"] > 1600:
+            raise HTTPException(status_code=400, detail="steps_per_km must be between 1100 and 1600")
     if updates:
         await db.app_config.update_one({"key": "main"}, {"$set": updates}, upsert=True)
     config = await db.app_config.find_one({"key": "main"}, {"_id": 0})

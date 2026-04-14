@@ -114,6 +114,23 @@ Build "The Kenya Challenge," a web and mobile-friendly application for the chari
 - [x] BACKEND: All challenge list endpoints sort by display_order
 - [x] FRONTEND: ChevronUp/ChevronDown buttons per challenge, first/last disabled appropriately
 
+### April 14, 2026 - Batch Changes
+- [x] HOME: New hero title "Step for Impact. Walk for Education." + subtitle
+- [x] HOME: KEF 25-year logo replaces "25 YEARS OF IMPACT" text
+- [x] HOME: How It Works steps updated (Sign Up, Pick a Route, Start Your Challenge, Fundraise)
+- [x] HOME: Why KEF section body text updated (3.5 million children, 60% families)
+- [x] HOME: "Ready to Walk for Education?" CTA
+- [x] HOME: New hero image (kenya-challenge-hero.jpg) and student image (one-student.jpg)
+- [x] HOME: Route scroll arrows now visible on all screen sizes (was hidden on mobile)
+- [x] UI: "Walker Type" renamed to "Registration Level" everywhere (Admin tab, Onboarding, Dashboard, ChallengesPage)
+- [x] ADMIN CONFIG: Steps per Kilometer setting (default 1300, min 1100, max 1600) with backend validation
+- [x] BACKEND: Activity step-to-km conversion now uses configurable steps_per_km from app_config
+- [x] ADMIN POSTCARDS: Challenge CRUD has "Send a Postcard?" toggle
+- [x] ADMIN POSTCARDS: Postcard CRUD (Title, Distance km, Subject Line, Body, optional Attachment upload)
+- [x] BACKEND: POST/PUT/DELETE /api/challenges/{id}/postcards endpoints
+- [x] BACKEND: POST /api/challenges/{id}/postcards/{id}/attachment file upload
+- [x] BUILD: Fixed ESLint warnings that blocked CI=true deployment builds
+
 ## Remaining Items
 - [ ] GiveButter payment embed (needs embed code from KEF)
 - [ ] Email system (Mailchimp integration + transactional emails for pledge notifications)
