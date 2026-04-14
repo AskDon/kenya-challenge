@@ -5,7 +5,6 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
 import api from '../lib/api';
 import { toast } from 'sonner';
@@ -15,53 +14,70 @@ import ShareButtons from '../components/ShareButtons';
 function RouteMap({ challenge, totalKm, progressPct, milestones }) {
   if (!challenge) return null;
   const sortedMilestones = [...(milestones || [])].sort((a, b) => a.distance_km - b.distance_km);
+  const API_BASE = process.env.REACT_APP_BACKEND_URL || '';
+
   return (
     <div className="relative bg-stone-50 rounded-xl p-4" data-testid="fundraise-route-map">
-      <div className="relative">
-        <div className="relative h-14 flex items-center">
-          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-2 bg-stone-200 rounded-full" />
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 h-2 bg-orange-500 rounded-full transition-all duration-500"
-            style={{ width: `calc(${Math.min(progressPct, 100)}% - 2rem)` }} />
-          {sortedMilestones.map((m, i) => {
-            const pct = (m.distance_km / challenge.total_distance_km) * 100;
-            const reached = totalKm >= m.distance_km;
-            return (
-              <div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
-                style={{ left: `calc(${pct}% * 0.92 + 4%)` }}>
-                <div className={`w-3.5 h-3.5 rounded-full border-2 ${reached ? 'bg-orange-500 border-orange-600' : 'bg-white border-stone-300'}`} title={m.title} />
-              </div>
-            );
-          })}
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-            <div className="w-4 h-4 rounded-full bg-emerald-500 border-2 border-emerald-600 flex items-center justify-center">
-              <Flag className="w-2 h-2 text-white" />
+      {/* Progress bar track */}
+      <div className="relative h-10 flex items-center mb-2">
+        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-3 bg-stone-200 rounded-full" />
+        <div
+          className="absolute left-4 top-1/2 -translate-y-1/2 h-3 bg-orange-500 rounded-full transition-all duration-500"
+          style={{ width: `calc(${Math.min(progressPct, 100)}% - 2rem)` }}
+        />
+        {sortedMilestones.map((m, i) => {
+          const pct = (m.distance_km / challenge.total_distance_km) * 100;
+          const reached = totalKm >= m.distance_km;
+          return (
+            <div key={i} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-10"
+              style={{ left: `calc(${pct}% * 0.92 + 4%)` }}>
+              <div className={`w-5 h-5 rounded-full border-2 ${reached ? 'bg-orange-500 border-orange-600' : 'bg-white border-stone-300'}`} title={m.title} />
             </div>
+          );
+        })}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+          <div className="w-6 h-6 rounded-full bg-emerald-500 border-2 border-emerald-600 flex items-center justify-center">
+            <Flag className="w-3 h-3 text-white" />
           </div>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
-            <div className="w-4 h-4 rounded-full bg-stone-800 border-2 border-stone-900 flex items-center justify-center">
-              <Flag className="w-2 h-2 text-white" />
+        </div>
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 z-10">
+          <div className="w-6 h-6 rounded-full bg-stone-800 border-2 border-stone-900 flex items-center justify-center">
+            <Flag className="w-3 h-3 text-white" />
+          </div>
+        </div>
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500"
+          style={{ left: `calc(${Math.min(progressPct, 100)}% * 0.92 + 4%)` }}>
+          <div className="relative">
+            <div className="w-9 h-9 rounded-full bg-orange-600 border-3 border-white shadow-lg flex items-center justify-center animate-pulse">
+              <Footprints className="w-4 h-4 text-white" />
             </div>
-          </div>
-          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20 transition-all duration-500"
-            style={{ left: `calc(${Math.min(progressPct, 100)}% * 0.92 + 4%)` }}>
-            <div className="relative">
-              <div className="w-7 h-7 rounded-full bg-orange-600 border-2 border-white shadow-lg flex items-center justify-center animate-pulse">
-                <Footprints className="w-3.5 h-3.5 text-white" />
-              </div>
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                {totalKm}km
-              </div>
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
+              {progressPct.toFixed(0)}% &middot; {totalKm} km
             </div>
           </div>
         </div>
-        <div className="relative h-10 mt-0.5">
+      </div>
+      {/* Milestone labels + pictures */}
+      <div className="relative mt-2">
+        <div className="flex justify-between px-2" style={{ paddingLeft: '4%', paddingRight: '4%' }}>
           {sortedMilestones.map((m, i) => {
-            const pct = (m.distance_km / challenge.total_distance_km) * 100;
             const reached = totalKm >= m.distance_km;
+            const imgUrl = m.image_url ? (m.image_url.startsWith('http') ? m.image_url : `${API_BASE}${m.image_url}`) : null;
             return (
-              <div key={i} className="absolute -translate-x-1/2 text-center"
-                style={{ left: `calc(${pct}% * 0.92 + 4%)`, maxWidth: '70px' }}>
-                <p className={`text-[8px] font-medium leading-tight ${reached ? 'text-orange-600' : 'text-stone-400'}`}>{m.title}</p>
+              <div key={i} className="flex flex-col items-center" style={{ width: `${90 / sortedMilestones.length}%` }}>
+                <p className={`text-[9px] md:text-[10px] font-medium text-center leading-tight ${reached ? 'text-orange-600' : 'text-stone-400'}`}>
+                  {m.title}
+                </p>
+                <p className="text-[8px] text-stone-300 mb-1">{m.distance_km}km</p>
+                <div className="w-12 h-12 md:w-14 md:h-14 rounded-lg bg-stone-200 overflow-hidden border border-stone-200">
+                  {imgUrl ? (
+                    <img src={imgUrl} alt={m.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <MapPin className="w-3 h-3 text-stone-300" />
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -472,67 +488,73 @@ export default function FundraisingPage() {
           </CardContent>
         </Card>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card className="bg-white rounded-2xl border border-stone-100">
-            <CardContent className="p-5 text-center">
-              <MapPin className="w-5 h-5 text-orange-600 mx-auto mb-2" />
-              <p className="text-xl font-bold text-stone-900">{total_km} km</p>
-              <p className="text-xs text-stone-400">walked</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-stone-100">
-            <CardContent className="p-5 text-center">
-              <Footprints className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
-              <p className="text-xl font-bold text-stone-900">{total_steps.toLocaleString()}</p>
-              <p className="text-xs text-stone-400">steps</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white rounded-2xl border border-stone-100">
-            <CardContent className="p-5 text-center">
-              <Heart className="w-5 h-5 text-rose-600 mx-auto mb-2" />
-              <p className="text-xl font-bold text-stone-900">${total_raised}</p>
-              <p className="text-xs text-stone-400">raised</p>
-            </CardContent>
-          </Card>
+        {/* Stats + Challenge + Route Map */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Left: Stats + Challenge Info */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="bg-white rounded-2xl border border-stone-100">
+                <CardContent className="p-4 text-center">
+                  <MapPin className="w-5 h-5 text-orange-600 mx-auto mb-1" />
+                  <p className="text-xl font-bold text-stone-900">{total_km} km</p>
+                  <p className="text-xs text-stone-400">walked</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-white rounded-2xl border border-stone-100">
+                <CardContent className="p-4 text-center">
+                  <Footprints className="w-5 h-5 text-emerald-600 mx-auto mb-1" />
+                  <p className="text-xl font-bold text-stone-900">{total_steps.toLocaleString()}</p>
+                  <p className="text-xs text-stone-400">steps</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-white rounded-2xl border border-stone-100">
+                <CardContent className="p-4 text-center">
+                  <Heart className="w-5 h-5 text-rose-600 mx-auto mb-1" />
+                  <p className="text-xl font-bold text-stone-900">${total_raised}</p>
+                  <p className="text-xs text-stone-400">raised</p>
+                </CardContent>
+              </Card>
+            </div>
+            {challenge && (
+              <Card className="bg-white rounded-2xl border border-stone-100">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mountain className="w-5 h-5 text-orange-600" />
+                    <h3 className="text-lg font-bold text-stone-900">{challenge.name}</h3>
+                  </div>
+                  <p className="text-sm text-stone-500 mb-3">{challenge.description}</p>
+                  <p className="text-xs text-stone-400">
+                    {total_km} of {challenge.total_distance_km} km &middot; {progressPct.toFixed(1)}% complete &middot; {Math.max(0, (challenge.total_distance_km - total_km)).toFixed(1)} km remaining
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Right: Route Map Image */}
+          {challenge && (
+            <div className="flex items-stretch">
+              {challenge.route_map_url ? (
+                <Card className="bg-white rounded-2xl border border-stone-100 overflow-hidden w-full">
+                  <img src={challenge.route_map_url} alt={`${challenge.name} route map`} className="w-full h-auto object-contain" />
+                </Card>
+              ) : (
+                <Card className="bg-stone-50 rounded-2xl border border-stone-100 w-full flex items-center justify-center min-h-[200px]">
+                  <div className="text-center p-6">
+                    <Mountain className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+                    <p className="text-sm text-stone-400">Route map coming soon</p>
+                  </div>
+                </Card>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Challenge + Route Map */}
+        {/* Progress Bar with Milestones + Pictures */}
         {challenge && (
           <Card className="bg-white rounded-2xl border border-stone-100 mb-6">
             <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Mountain className="w-5 h-5 text-orange-600" />
-                <h3 className="text-lg font-bold text-stone-900">{challenge.name}</h3>
-              </div>
-              <p className="text-sm text-stone-500 mb-4">{challenge.description}</p>
               <RouteMap challenge={challenge} totalKm={total_km} progressPct={progressPct} milestones={challenge.milestones} />
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-stone-600">{total_km} km completed</span>
-                  <span className="font-bold text-stone-900">{progressPct.toFixed(1)}%</span>
-                </div>
-                <Progress value={progressPct} className="h-3" />
-                <p className="text-xs text-stone-400 mt-2">
-                  {total_km} of {challenge.total_distance_km} km &middot; {Math.max(0, (challenge.total_distance_km - total_km)).toFixed(1)} km remaining
-                </p>
-              </div>
-              <div className="mt-5 space-y-2">
-                {challenge.milestones?.map((m, i) => {
-                  const reached = total_km >= m.distance_km;
-                  return (
-                    <div key={i} className={`flex items-center gap-3 p-2 rounded-lg ${reached ? 'bg-emerald-50' : 'bg-stone-50'}`}>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${reached ? 'bg-emerald-600 text-white' : 'bg-stone-200 text-stone-500'}`}>
-                        {reached ? '\u2713' : i + 1}
-                      </div>
-                      <div>
-                        <p className={`text-xs font-medium ${reached ? 'text-emerald-700' : 'text-stone-600'}`}>{m.title}</p>
-                        <p className="text-[10px] text-stone-400">{m.distance_km} km &middot; {m.description}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </CardContent>
           </Card>
         )}
