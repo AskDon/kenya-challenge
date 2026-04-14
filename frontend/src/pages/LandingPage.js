@@ -223,7 +223,7 @@ export default function LandingPage() {
             Ready to Walk for Education?
           </h2>
           <p className="text-stone-400 max-w-lg mx-auto mb-8">
-            Join walkers from around the world. Every kilometer you walk brings a Kenyan student closer to their dreams.
+            Join walkers from around the world. Every step you walk brings a Kenyan student closer to their dreams.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link to={user ? '/dashboard' : '/signup'}>
@@ -318,12 +318,16 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="py-8 bg-stone-900 border-t border-stone-800">
-        <div className="container-app text-center">
+        <div className="container-app text-center space-y-3">
           <p className="text-stone-500 text-sm">
             The Kenya Challenge is a fundraising initiative of the{' '}
             <a href="https://www.kenyaeducationfund.org/" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:text-orange-300">
               Kenya Education Fund
             </a>
+          </p>
+          <p className="text-stone-500 text-sm">
+            For any questions regarding the walk or the app, please contact Monsheila at{' '}
+            <a href="mailto:monsheila@kenyaeducationfund.org" className="text-orange-400 hover:text-orange-300">monsheila@kenyaeducationfund.org</a>.
           </p>
         </div>
       </footer>

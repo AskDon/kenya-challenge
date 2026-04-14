@@ -580,7 +580,7 @@ function WalkerTypesAdmin({ walkerTypes, onRefresh }) {
   const openEdit = (wt) => { setForm({ name: wt.name, cost_usd: String(wt.cost_usd), display_order: String(wt.display_order) }); setEditing(wt.id); setOpen(true); };
 
   const handleSave = async () => {
-    const payload = { name: form.name, cost_usd: parseFloat(form.cost_usd), display_order: parseInt(form.display_order) || 0 };
+    const payload = { name: form.name, cost_usd: parseFloat(form.cost_usd), display_order: Math.max(1, parseInt(form.display_order) || 1) };
     try {
       if (editing) { await api.put(`/walker-types/${editing}`, payload); toast.success('Updated'); }
       else { await api.post('/walker-types', payload); toast.success('Created'); }
@@ -613,7 +613,7 @@ function WalkerTypesAdmin({ walkerTypes, onRefresh }) {
               <div className="space-y-3">
                 <div><Label className="text-sm">Name</Label><Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-name" /></div>
                 <div><Label className="text-sm">Cost (USD)</Label><Input type="number" value={form.cost_usd} onChange={e => setForm(f => ({...f, cost_usd: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-cost" /></div>
-                <div><Label className="text-sm">Display Order</Label><Input type="number" value={form.display_order} onChange={e => setForm(f => ({...f, display_order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-order" /></div>
+                <div><Label className="text-sm">Display Order</Label><Input type="number" min="1" value={form.display_order} onChange={e => setForm(f => ({...f, display_order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-wt-order" /></div>
                 <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-wt-save-btn">{editing ? 'Update' : 'Create'}</Button>
               </div>
             </DialogContent>
@@ -647,7 +647,7 @@ function AchievementLevelsAdmin({ levels, onRefresh }) {
   const openEdit = (al) => { setForm({ total_amount_usd: String(al.total_amount_usd), achievement: al.achievement, swag: al.swag, display_order: String(al.display_order) }); setEditing(al.id); setOpen(true); };
 
   const handleSave = async () => {
-    const payload = { total_amount_usd: parseFloat(form.total_amount_usd), achievement: form.achievement, swag: form.swag, display_order: parseInt(form.display_order) || 0 };
+    const payload = { total_amount_usd: parseFloat(form.total_amount_usd), achievement: form.achievement, swag: form.swag, display_order: Math.max(1, parseInt(form.display_order) || 1) };
     try {
       if (editing) { await api.put(`/achievement-levels/${editing}`, payload); toast.success('Updated'); }
       else { await api.post('/achievement-levels', payload); toast.success('Created'); }
@@ -681,7 +681,7 @@ function AchievementLevelsAdmin({ levels, onRefresh }) {
                 <div><Label className="text-sm">Total Amount (USD)</Label><Input type="number" value={form.total_amount_usd} onChange={e => setForm(f => ({...f, total_amount_usd: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-amount" /></div>
                 <div><Label className="text-sm">Achievement</Label><Input value={form.achievement} onChange={e => setForm(f => ({...f, achievement: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-achievement" /></div>
                 <div><Label className="text-sm">Thank You Swag</Label><Input value={form.swag} onChange={e => setForm(f => ({...f, swag: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-swag" /></div>
-                <div><Label className="text-sm">Display Order</Label><Input type="number" value={form.display_order} onChange={e => setForm(f => ({...f, display_order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-order" /></div>
+                <div><Label className="text-sm">Display Order</Label><Input type="number" min="1" value={form.display_order} onChange={e => setForm(f => ({...f, display_order: e.target.value}))} className="mt-1 rounded-xl" data-testid="admin-al-order" /></div>
                 <Button onClick={handleSave} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-al-save-btn">{editing ? 'Update' : 'Create'}</Button>
               </div>
             </DialogContent>
@@ -766,7 +766,7 @@ function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
   const openEditLevel = (l) => { setLevelForm({ name: l.name, max_sponsors: String(l.max_sponsors || ''), display_order: String(l.display_order || 0) }); setEditingLevel(l.id); setLevelOpen(true); };
 
   const handleSaveLevel = async () => {
-    const payload = { name: levelForm.name, max_sponsors: levelForm.max_sponsors ? parseInt(levelForm.max_sponsors) : null, display_order: parseInt(levelForm.display_order) || 0 };
+    const payload = { name: levelForm.name, max_sponsors: levelForm.max_sponsors ? parseInt(levelForm.max_sponsors) : null, display_order: Math.max(1, parseInt(levelForm.display_order) || 1) };
     try {
       if (editingLevel) { await api.put(`/sponsorship-levels/${editingLevel}`, payload); toast.success('Level updated'); }
       else { await api.post('/sponsorship-levels', payload); toast.success('Level created'); }
@@ -863,7 +863,7 @@ function CorporateSponsorsAdmin({ levels, sponsors, onRefresh }) {
                   </div>
                   <div>
                     <Label className="text-sm">Display Order</Label>
-                    <Input type="number" value={levelForm.display_order} onChange={e => setLevelForm(f => ({...f, display_order: e.target.value}))} placeholder="1" className="mt-1 rounded-xl" data-testid="admin-level-order" />
+                    <Input type="number" min="1" value={levelForm.display_order} onChange={e => setLevelForm(f => ({...f, display_order: e.target.value}))} placeholder="1" className="mt-1 rounded-xl" data-testid="admin-level-order" />
                   </div>
                   <Button onClick={handleSaveLevel} className="w-full rounded-full bg-orange-600 hover:bg-orange-700 text-white" data-testid="admin-level-save-btn">{editingLevel ? 'Update' : 'Create'}</Button>
                 </div>
