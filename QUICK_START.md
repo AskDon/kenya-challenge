@@ -70,10 +70,15 @@
 ## What's Working
 
 - Multi-role auth (Walker, Supporter, Admin) with JWT
-- Full admin CRUD + reordering for Challenges, Walker Types, Achievement Levels
+- Full admin CRUD + reordering for Challenges, Registration Levels, Achievement Levels
+- Admin postcards per challenge (CRUD with title, distance, subject, body, attachment upload)
+- Admin configurable steps_per_km (default 1300, min 1100-1600)
 - Admin stats dashboard with per-challenge breakdown
 - Admin route map + milestone photo uploads
-- Walker onboarding, activity logging, team management
+- Walker onboarding with route map preview, activity logging, team management
+- Route map images shown everywhere (Home, Onboarding, Dashboard, Fundraising) — uncropped
+- Dashboard: 2-column layout (stats left, map right), bold progress bar with milestone pictures
+- Fundraising page matches dashboard layout
 - Public fundraising pages with combinable pledge options
 - Supporter signup/login from fundraising page
 - 4-tab leaderboards with clickable names
@@ -81,6 +86,8 @@
 - Social sharing buttons
 - Profile picture upload
 - "Start New Challenge" flow after completion
+- Home page: "Step for Impact. Walk for Education." hero, KEF 25-year logo, contact footer
+- "Registration Level" naming throughout UI
 
 ## What's NOT Working (Needs Implementation)
 

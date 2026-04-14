@@ -288,12 +288,18 @@ PUT  /api/admin/config             # Update app config
 Everything listed below is built, tested, and functional:
 
 - Multi-role authentication (Admin, Walker, Supporter) with JWT
-- Full admin console with 7 tabs (Stats, Challenges, Walker Types, Achievements, Users, Corporate, Config)
-- Admin can reorder Challenges, Walker Types, and Achievement Levels
+- Full admin console with 7 tabs (Stats, Challenges, Registration Levels, Achievements, Users, Corporate, Config)
+- Admin can reorder Challenges, Registration Levels (formerly Walker Types), and Achievement Levels
 - Admin can upload route maps and milestone photos per challenge
-- Walker multi-step onboarding (challenge selection, walker type, team, payment/invite)
-- Manual activity logging (steps or km)
-- Route progress visualization with milestone markers on dashboard
+- Admin can define Postcards per challenge (surprise emails at distance milestones) with CRUD, attachment upload
+- Admin configurable Steps per Kilometer (default 1300, min 1100, max 1600)
+- Display order enforced as positive integers (min 1) for all orderable entities
+- Walker multi-step onboarding (challenge selection with route map preview, registration level, team, payment/invite)
+- Manual activity logging (steps or km, conversion uses admin-configured steps_per_km)
+- Route progress visualization with milestone markers and milestone pictures on dashboard
+- Route map images displayed everywhere: Home Page cards, Onboarding selection (1/3 right), Dashboard (right column), Fundraising Page (right column) — all uncropped (object-contain)
+- Dashboard redesign: 2-column layout (stats 2x2 left, route map right), bold progress bar with milestone pictures
+- Fundraising page matches dashboard layout (stats + challenge left, map right, bold progress bar)
 - Team creation, join by invite code, leader can remove members
 - Public fundraising pages per walker with two-option pledge form (Total + Per KM, combinable)
 - Supporter signup/login from fundraising page with auto-redirect to dashboard
@@ -303,9 +309,12 @@ Everything listed below is built, tested, and functional:
 - Social sharing buttons (Facebook, Twitter, WhatsApp, copy link)
 - Corporate sponsors on landing page grouped by level with proper spacing
 - "Become a Sponsor" section with email contact link
-- Horizontal scrolling challenge cards on homepage
+- Horizontal scrolling challenge cards on homepage with visible scroll arrows
 - "Start New Challenge" flow for walkers who complete a route
 - Walker displays as "Full Name "Nickname"" on fundraising pages
+- Home page: "Step for Impact. Walk for Education." hero with KEF 25-year logo
+- Footer contact info for Monsheila
+- "Registration Level" naming throughout UI (backend remains walker_types)
 
 ---
 
@@ -320,14 +329,15 @@ Everything listed below is built, tested, and functional:
 - Backend: `services/payment_service.py` has a placeholder class
 **Action:** Get the GiveButter embed code from KEF and drop it in.
 
-### 2. Email Notifications (NOT IMPLEMENTED)
-**Status:** No email sending exists anywhere.
+### 2. Email Notifications / Postcards (NOT IMPLEMENTED)
+**Status:** Postcard CRUD is fully built (admin can define postcards per challenge with title, distance, subject, body, attachment). No email sending exists yet.
 **Requested provider:** Mailchimp (transactional/Mandrill)
 **Emails needed:**
+- Postcard emails to walkers when they cross a postcard's distance threshold
 - Notification to walker when they receive a new pledge
 - Welcome email after signup (nice to have)
 - Team invite email (nice to have)
-**Where to add:** Create `backend/services/email_service.py`, call it from the pledge creation endpoint in `server.py` (line ~811, `POST /api/pledges/:walkerId`).
+**Where to add:** Create `backend/services/email_service.py`, integrate into activity creation (check postcard triggers) and pledge creation endpoints in `server.py`.
 
 ### 3. Google Fit Auto-Sync (BACKEND READY, NEEDS CREDENTIALS)
 **Status:** Full OAuth flow is coded in `services/google_fit_service.py`. Just needs Google API credentials.
