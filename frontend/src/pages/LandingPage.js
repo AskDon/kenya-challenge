@@ -59,6 +59,29 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* About The Kenya Challenge */}
+      <section className="py-16 md:py-24 bg-white border-b border-stone-100" data-testid="about-section">
+        <div className="container-app max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-8">The Kenya Challenge</h2>
+          <div className="space-y-5 text-stone-600 text-base md:text-lg leading-relaxed">
+            <p>This powerful community walk is dedicated to expanding access to education and opportunities for students in Kenya.</p>
+            <p>This global virtual walk connects participants from around the world, inviting them to walk, run, or jog from anywhere.</p>
+            <p>Through the app, participants track their activity, follow fundraising progress, and engage directly with the real-world impact their efforts create, supporting students and transforming futures.</p>
+            <p>The platform also enables both individual and team fundraising, introducing a dynamic and friendly competitive element that drives higher participation and deeper engagement.</p>
+            <p>This walk is more than a gathering; it is a visible statement that when a community moves together, lives change. Each step taken helps provide students with the resources, mentorship, and support they need to build brighter futures.</p>
+            <p>Join us today and take part in a powerful experience that not only enriches your life but also changes the futures of many students in Kenya.</p>
+          </div>
+
+          <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mt-16 mb-8">What Can We Accomplish Together?</h2>
+          <div className="space-y-5 text-stone-600 text-base md:text-lg leading-relaxed">
+            <p>Our finish line is a world where every child has a chance to learn. In Kenya, this finish line is still far from reality as 60% of families can't afford secondary school fees. With your help, we can make a change, because we know that the only way we can make it happen is together.</p>
+            <p>The KEF Walk brings people together in a powerful and meaningful way. It's a chance to connect, share our stories and passion, and build a sense of community while raising vital funds to support life-changing programs and opportunities.</p>
+            <p>Don't forget to ask your friends, family, and colleagues to join you for this special day. We can't wait to see you at The Kenya Challenge.</p>
+            <p className="font-medium text-stone-700">Thank you so much for joining us!</p>
+          </div>
+        </div>
+      </section>
+
       {/* Impact Stats */}
       <section className="py-16 md:py-20 bg-white border-b border-stone-100" data-testid="impact-section">
         <div className="container-app">
@@ -109,6 +132,19 @@ export default function LandingPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Join The Walk */}
+      <section className="py-16 md:py-24 bg-white border-b border-stone-100" data-testid="join-walk-section">
+        <div className="container-app max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-stone-900 mb-8">Join The Walk Starting May 18th</h2>
+          <div className="space-y-5 text-stone-600 text-base md:text-lg leading-relaxed">
+            <p>Download the Kenya Challenge App from the App Store and open it on your phone. Simply register and start walking, jogging, or running. Your phone will automatically track your daily steps and display your progress on the map.</p>
+            <p>You can walk anywhere, anytime, on your own or by joining or creating a team, and compete with others. Even better, you can invite sponsors and take your impact further by fundraising as you move.</p>
+            <p>Sign up today and start walking on May 18th. You have 50 days to complete your challenge; the walk will end on July 8th. Remember, it's all about making a difference while having fun!</p>
+            <p className="font-medium text-stone-700">Thank you for joining!</p>
           </div>
         </div>
       </section>
